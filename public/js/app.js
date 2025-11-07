@@ -1,0 +1,192 @@
+import { me, Game, refreshIdentity } from './state.js';
+import { openWs, sendWs } from './ws.js';
+import { mountNav } from './ui/nav.js';
+import { showModal, hideModal } from './ui/modal.js';
+import { mountBoard, UI, highlightWin, clearHighlights, toLobby } from './game/board.js';
+import { AnimationController } from './animations.js';
+import { notificationSystem } from './notifications.js';
+import { audioManager } from './audio.js';
+import { achievementSystem } from './achievements.js';
+import { statsSystem } from './stats.js';
+
+const animationController = new AnimationController();
+
+window.notificationSystem = notificationSystem;
+window.audioManager = audioManager;
+window.achievementSystem = achievementSystem;
+window.statsSystem = statsSystem;
+
+const appRoot = document.getElementById('app') || document.body;
+mountBoard(appRoot);
+
+const nav = mountNav();
+
+// центральная кнопка: поиск/сдаться/реванш
+nav.onAction((mode) => {
+  if (mode === 'find') {
+    sendWs({ t: 'queue.join' });
+    notificationSystem.info('Поиск соперника...');
+    audioManager.playClick();
+  }
+  if (mode === 'resign') {
+    if (Game.gameId) {
+      showModal(
+        'Сдаться?',
+        'Вы уверены, что хотите сдаться?',
+        { label: 'Сдаться', onClick: () => { sendWs({ t: 'game.resign', gameId: Game.gameId }); hideModal(); audioManager.playClick(); } },
+        { label: 'Отмена', onClick: () => { hideModal(); audioManager.playClick(); } }
+      );
+    }
+  }
+  if (mode === 'rematch') inviteLastOpponent(); // пункт 1: нажали «Реванш» → сразу отправляем приглашение
+});
+
+function inviteLastOpponent() {
+  if (!Game.lastOpp?.id) { sendWs({ t: 'queue.join' }); return; }
+  UI.setStatus('Отправлено приглашение на реванш…', true);
+  notificationSystem.info('Приглашение отправлено');
+  sendWs({ t: 'rematch.offer', to: Game.lastOpp.id, prevGameId: Game.gameId || null });
+  audioManager.playClick();
+}
+
+function acceptRematch(fromId) { UI.setStatus('Подтверждение реванша…'); sendWs({ t: 'rematch.accept', to: fromId }); audioManager.playClick(); }
+function declineRematch(fromId) { sendWs({ t: 'rematch.decline', to: fromId }); toLobby(); audioManager.playClick(); }
+
+openWs(
+  () => {
+    const initData = window?.Telegram?.WebApp?.initData || '';
+    sendWs({ t: 'hello', uid: me.id, name: me.name, avatar: me.avatar, initData });
+    UI.setStatus('Онлайн: подключено');
+    nav.setMode('find');
+    UI.applyNames();
+    notificationSystem.success('Подключено к серверу');
+    audioManager.playNotification();
+
+    setTimeout(() => {
+      if (refreshIdentity()) {
+        const initData2 = window?.Telegram?.WebApp?.initData || '';
+        sendWs({ t: 'hello', uid: me.id, name: me.name, avatar: me.avatar, initData: initData2 });
+        UI.applyNames();
+      }
+    }, 120);
+  },
+  (msg) => {
+    if (msg.t === 'game.start') {
+      Game.gameId = msg.gameId;
+      Game.you = msg.you;
+      Game.turn = msg.turn || 'X';
+
+      const incomingOpp = msg.opp || null;
+      Game.opp = (incomingOpp && String(incomingOpp.id) === String(me.id)) ? null : incomingOpp;
+      // фикс: всегда обновляем lastOpp при старте игры
+      Game.lastOpp = Game.opp ? { ...Game.opp } : Game.lastOpp;
+
+      Game.resetBoard();
+      clearHighlights();
+
+      hideModal();
+      UI.setStatus(Game.myMoveAllowed() ? 'Ваш ход' : 'Ход оппонента');
+      UI.renderBoard();
+      nav.setMode('resign');
+
+      notificationSystem.success('Игра началась!');
+      audioManager.playNotification();
+      statsSystem.startGame();
+      return;
+    }
+
+    if (msg.t === 'game.state') {
+      if (Array.isArray(msg.board)) Game.board = msg.board.slice();
+      if (msg.turn) Game.turn = msg.turn;
+      UI.renderBoard();
+
+      if (msg.win) {
+        highlightWin(msg.win.line);
+        nav.setMode('rematch'); // центр-кнопка теперь «Реванш» и отправит приглашение по нажатию
+
+        const youWon = (msg.win.by !== null && msg.win.by === Game.you);
+        const youLost = (msg.win.by !== null && msg.win.by !== Game.you);
+        const oppLabel = Game.opp?.name || 'оппонент';
+
+        let title = 'Ничья 🤝';
+        let text = `Сыграли вничью с ${oppLabel}.`;
+        
+        if (youWon) { title = 'Победа 🎉'; text = `Вы обыграли ${oppLabel}.`; audioManager.playWin(); statsSystem.endGame('win'); }
+        if (youLost) { title = 'Поражение 😔'; text = `${oppLabel} выиграл(а).`; audioManager.playLose(); statsSystem.endGame('lose'); }
+        if (msg.win.by === null) { audioManager.playDraw(); statsSystem.endGame('draw'); }
+
+        showModal(
+          title, text,
+          { label: 'Реванш', onClick: () => { hideModal(); inviteLastOpponent(); } }, // пункт 1: кнопка модалки тоже сразу шлёт приглашение
+          { label: 'Выйти', onClick: () => { toLobby(); nav.setMode('find'); } }
+        );
+
+        UI.setStatus(youWon ? 'Победа!' : youLost ? 'Поражение' : 'Ничья');
+      } else {
+        UI.setStatus(Game.myMoveAllowed() ? 'Ваш ход' : 'Ход оппонента');
+        if (Game.myMoveAllowed()) audioManager.playMove();
+      }
+      return;
+    }
+
+    if (msg.t === 'game.end') {
+      // гарантируем, что lastOpp не потеряется даже при дисконнекте/сдаче
+      if (!Game.lastOpp && Game.opp) Game.lastOpp = { ...Game.opp };
+
+      nav.setMode('rematch');
+
+      const text = msg.reason === 'resign'
+        ? 'Оппонент сдался.'
+        : msg.reason === 'disconnect'
+        ? 'Оппонент отключился.'
+        : 'Игра завершена.';
+
+      showModal(
+        'Игра завершена',
+        text,
+        { label: 'Реванш', onClick: () => { hideModal(); inviteLastOpponent(); } },
+        { label: 'Выйти', onClick: () => { toLobby(); nav.setMode('find'); } }
+      );
+
+      UI.setStatus('Игра завершена');
+      if (msg.reason === 'resign') { audioManager.playNotification(); statsSystem.endGame('lose'); }
+      return;
+    }
+
+    if (msg.t === 'rematch.offer' && msg.from) {
+      if (String(msg.from.id) === String(me.id)) return;
+      Game.lastOpp = { id: msg.from.id, name: msg.from.name, avatar: msg.from.avatar };
+      showModal(
+        'Реванш',
+        `${msg.from.name || 'Оппонент'} предлагает реванш!`,
+        { label: 'Принять', onClick: () => { hideModal(); acceptRematch(msg.from.id); } },
+        { label: 'Отказаться', onClick: () => { hideModal(); declineRematch(msg.from.id); nav.setMode('find'); } }
+      );
+      audioManager.playNotification();
+      return;
+    }
+
+    if (msg.t === 'rematch.declined') {
+      showModal(
+        'Реванш отклонён',
+        'Соперник отказался от реванша. Вы возвращены в лобби.',
+        { label: 'Ок', onClick: () => { toLobby(); nav.setMode('find'); } },
+        { label: '', show: false }
+      );
+      return;
+    }
+  },
+  () => {
+    UI.setStatus('Отключено. Переподключение…', true);
+    notificationSystem.error('Соединение потеряно');
+  }
+);
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') hideModal();
+  if (e.key === ' ' && !Game.gameId) { e.preventDefault(); sendWs({ t: 'queue.join' }); }
+});
+
+document.addEventListener('visibilitychange', () => {
+  document.body.style.animationPlayState = document.hidden ? 'paused' : 'running';
+});
