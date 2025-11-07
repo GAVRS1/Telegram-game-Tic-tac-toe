@@ -21,6 +21,10 @@ function fullName(u) {
   return name || 'Player';
 }
 
+function cleanUsername(u){
+  return (u || '').trim().replace(/^@/, '').replace(/[^a-zA-Z0-9_]/g, '').slice(0, 32);
+}
+
 const uid = (() => {
   const fromTG = TG?.initDataUnsafe?.user?.id;
   if (fromTG) return String(fromTG);
@@ -34,7 +38,12 @@ export const me = {
   id: uid,
   name: fullName(TG?.initDataUnsafe?.user) || localStorage.getItem(`${APP_NAME}:name`) || 'Player',
   avatar: TG?.initDataUnsafe?.user?.photo_url || localStorage.getItem(`${APP_NAME}:avatar`) || '',
+  username: cleanUsername(TG?.initDataUnsafe?.user?.username || TG?.initDataUnsafe?.user?.user_name || ''),
 };
+
+if (typeof window !== 'undefined') {
+  window.me = me;
+}
 
 try {
   localStorage.setItem(`${APP_NAME}:name`, me.name);
@@ -45,10 +54,12 @@ export function refreshIdentity() {
   const u = TG?.initDataUnsafe?.user;
   const nextName = fullName(u);
   const nextAva  = u?.photo_url || me.avatar || '';
+  const nextUsername = cleanUsername(u?.username || u?.user_name || '');
   let changed = false;
 
   if (nextName && nextName !== me.name) { me.name = nextName; changed = true; }
   if (nextAva  && nextAva  !== me.avatar) { me.avatar = nextAva; changed = true; }
+  if (nextUsername !== undefined && nextUsername !== me.username) { me.username = nextUsername; changed = true; }
 
   try {
     if (changed) {

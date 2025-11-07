@@ -1,5 +1,5 @@
 import { $, el } from '../state.js';
-import { showModal, hideModal } from './modal.js';
+import { showModal, hideModal, setModalContent } from './modal.js';
 
 export function mountNav() {
   const nav = el('div', { class:'navbar navbar--lg' },
@@ -53,8 +53,6 @@ export function mountNav() {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const data = await r.json();
       const rows = Array.isArray(data?.leaders) ? data.leaders : [];
-      const box = document.querySelector('.modal .box'); if (!box) return;
-
       const list = el('div', { style:'display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow:auto' });
       if (rows.length === 0) {
         list.appendChild(el('div', {}, 'Список пуст.'));
@@ -70,17 +68,10 @@ export function mountNav() {
           );
         });
       }
-
-      // заменить текст в модалке на список
-      const p = box.querySelector('p');
-      if (p) { p.replaceWith(list); } else { box.appendChild(list); }
+      setModalContent(list);
     } catch (e) {
-      const box = document.querySelector('.modal .box');
-      if (box) {
-        const p = box.querySelector('p');
-        const msg = 'Рейтинг недоступен. Проверь БД и /leaders.';
-        if (p) p.textContent = msg; else box.appendChild(el('p', {}, msg));
-      }
+      const msg = 'Рейтинг недоступен. Проверь БД и /leaders.';
+      setModalContent(msg);
     }
   });
 
@@ -116,8 +107,7 @@ export function mountNav() {
     );
 
     showModal('Профиль', '', { label:'Ок', onClick:()=>hideModal() }, { show:false });
-    const box = document.querySelector('.modal .box');
-    const p = box.querySelector('p'); if (p) p.replaceWith(wrap); else box.appendChild(wrap);
+    setModalContent(wrap);
   });
 
   return {
@@ -138,29 +128,28 @@ function statCard(label, value){
 }
 
 function safeStatsSummary(){
-  const ss = (window.statsSystem && typeof window.statsSystem.getStatsSummary==='function')
-    ? window.statsSystem.getStatsSummary()
-    : null;
+  const sys = window.statsSystem;
+  const summary = (sys && typeof sys.getStatsSummary === 'function') ? sys.getStatsSummary() : {};
+  const raw = sys?.stats || {};
 
-  const s = ss || {};
+  const gamesPlayed = raw.gamesPlayed ?? summary.gamesPlayed ?? 0;
+  const wins   = raw.gamesWon   ?? summary.wins   ?? 0;
+  const losses = raw.gamesLost  ?? summary.losses ?? 0;
+  const draws  = raw.gamesDrawn ?? summary.draws  ?? summary.totalDraws ?? 0;
+  const winRate = typeof summary.winRate === 'number'
+    ? summary.winRate
+    : (typeof sys?.getWinRate === 'function' ? sys.getWinRate() : 0);
+  const averageMoves = typeof summary.averageMoves === 'number'
+    ? summary.averageMoves
+    : (typeof sys?.getAverageMovesPerGame === 'function' ? sys.getAverageMovesPerGame() : 0);
+
   return {
-    gamesPlayed: s.gamesPlayed ?? 0,
-    wins: s.currentStreak ? undefined : undefined, // не используем, ниже вычислим
-    winRate: s.winRate ?? 0,
-    averageMoves: s.averageMoves ?? s.averageMovesPerGame ?? 0,
-    draws: s.totalDraws ?? 0,
-    // поскольку statsSystem хранит только суммарно, попробуем реконструировать
-    // если нет прямых полей — возьмём из window.statsSystem.stats
-    ...(() => {
-      try {
-        const raw = window.statsSystem?.stats || {};
-        return {
-          wins: raw.gamesWon ?? 0,
-          losses: raw.gamesLost ?? 0,
-          draws: raw.gamesDrawn ?? (s.gamesDrawn ?? 0),
-        };
-      } catch { return { wins:0, losses:0, draws:0 }; }
-    })()
+    gamesPlayed,
+    wins,
+    losses,
+    draws,
+    winRate,
+    averageMoves,
   };
 }
 

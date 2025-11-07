@@ -155,7 +155,10 @@ body{
   animation:slideInUp .25s ease;
 }
 .modal h3{margin:0 0 8px;font-size:18px}
-.modal p{margin:0 0 14px;color:var(--muted)}
+.modal .body{margin:0 0 14px;color:var(--muted);max-height:60vh;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
+.modal .body:empty{display:none}
+.modal .body p{margin:0;color:var(--muted)}
+.modal .body .modal-text{line-height:1.4}
 .modal .row{display:flex;gap:10px;justify-content:flex-end}
 .btn{
   border:1px solid var(--line);
@@ -182,6 +185,29 @@ body{
 
 /* ====== ДОП. АНИМАЦИИ ====== */
 @keyframes slideInUp { from { transform:translateY(10px);opacity:0 } to { transform:none;opacity:1 } }
+
+/* ====== АВТОР ====== */
+.author-badge{
+  margin:16px auto 0;
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  padding:8px 12px;
+  border-radius:999px;
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.03);
+  color:var(--muted);
+  font-size:12px;
+  cursor:pointer;
+  transition:background .2s ease,border-color .2s ease,transform .12s ease;
+}
+.author-badge:hover{background:rgba(255,255,255,.05);border-color:#324055;transform:translateY(-1px)}
+.author-badge:active{transform:translateY(0)}
+.author-badge img{
+  width:26px;height:26px;border-radius:50%;object-fit:cover;border:1px solid var(--line);
+}
+.author-badge span{font-weight:600;color:var(--text);opacity:.85}
+.author-badge small{color:var(--muted);font-weight:500}
 
 /* ====== АДАПТИВ ====== */
 @media (max-width:480px){

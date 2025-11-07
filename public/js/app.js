@@ -55,7 +55,7 @@ function declineRematch(fromId) { sendWs({ t: 'rematch.decline', to: fromId }); 
 openWs(
   () => {
     const initData = window?.Telegram?.WebApp?.initData || '';
-    sendWs({ t: 'hello', uid: me.id, name: me.name, avatar: me.avatar, initData });
+    sendWs({ t: 'hello', uid: me.id, name: me.name, username: me.username, avatar: me.avatar, initData });
     UI.setStatus('Онлайн: подключено');
     nav.setMode('find');
     UI.applyNames();
@@ -65,7 +65,7 @@ openWs(
     setTimeout(() => {
       if (refreshIdentity()) {
         const initData2 = window?.Telegram?.WebApp?.initData || '';
-        sendWs({ t: 'hello', uid: me.id, name: me.name, avatar: me.avatar, initData: initData2 });
+        sendWs({ t: 'hello', uid: me.id, name: me.name, username: me.username, avatar: me.avatar, initData: initData2 });
         UI.applyNames();
       }
     }, 120);
@@ -155,7 +155,12 @@ openWs(
 
     if (msg.t === 'rematch.offer' && msg.from) {
       if (String(msg.from.id) === String(me.id)) return;
-      Game.lastOpp = { id: msg.from.id, name: msg.from.name, avatar: msg.from.avatar };
+      Game.lastOpp = {
+        id: msg.from.id,
+        name: msg.from.name,
+        username: msg.from.username || '',
+        avatar: msg.from.avatar,
+      };
       showModal(
         'Реванш',
         `${msg.from.name || 'Оппонент'} предлагает реванш!`,
