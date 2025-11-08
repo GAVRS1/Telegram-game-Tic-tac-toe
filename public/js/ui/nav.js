@@ -63,7 +63,10 @@ export function mountNav() {
               el('div', { style:'width:24px;text-align:right;font-weight:700' }, String(i+1)),
               el('img', { src: u.avatar_url || 'img/logo.svg', alt:'', style:'width:28px;height:28px;border-radius:50%;object-fit:cover;border:1px solid var(--line)' }),
               el('div', { style:'flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' }, sanitize(u.username || 'Player')),
-              el('div', { style:'font-weight:700' }, `🏆 ${u.wins ?? 0}`)
+              el('div', { style:'display:flex;flex-direction:column;align-items:flex-end;gap:4px;font-size:12px;color:var(--muted)' },
+                el('div', { style:'font-weight:700;color:var(--text)' }, `🏆 ${Number(u.wins ?? 0)}`),
+                el('div', {}, `🎮 ${Number(u.games_played ?? 0)} | ⚖️ ${Number(u.win_rate ?? 0)}%`)
+              )
             )
           );
         });
@@ -76,13 +79,19 @@ export function mountNav() {
   });
 
   // === ПРОФИЛЬ (п.3): достижения + локальная статистика ===
-  $('#tabProfile', nav).addEventListener('click', () => {
-    const stats = safeStatsSummary();
-    const achs  = safeAchievements();
+  $('#tabProfile', nav).addEventListener('click', async () => {
+    showModal('Профиль', 'Загрузка…', { label:'Ок', onClick:()=>hideModal() }, { show:false });
+
+    const [serverResult, achs] = await Promise.all([
+      fetchProfileFromServer(),
+      Promise.resolve(safeAchievements()),
+    ]);
+
+    const stats = mergeStatsSummary(serverResult?.profile || null);
 
     const wrap = el('div', { style:'display:flex;flex-direction:column;gap:12px' },
       el('div', { style:'display:flex;gap:10px;align-items:center' },
-        el('img', { src: achs.avatar || 'img/logo.svg', alt:'', style:'width:40px;height:40px;border-radius:50%;object-fit:cover;border:1px solid var(--line)' }),
+        el('img', { src: (serverResult?.profile?.avatar_url || achs.avatar || 'img/logo.svg'), alt:'', style:'width:40px;height:40px;border-radius:50%;object-fit:cover;border:1px solid var(--line)' }),
         el('div', { style:'font-weight:800' }, sanitize(achs.name || 'Профиль'))
       ),
       // итоги
@@ -103,10 +112,10 @@ export function mountNav() {
           ? el('div', { style:'display:flex;flex-wrap:wrap;gap:8px' },
               ...achs.items.map(t => el('span', { class:'btn', style:'cursor:default' }, '🏅 ' + sanitize(t))))
           : el('div', { style:'color:var(--muted)' }, 'Пока нет')
-      )
+      ),
+      buildProfileNotes(serverResult)
     );
 
-    showModal('Профиль', '', { label:'Ок', onClick:()=>hideModal() }, { show:false });
     setModalContent(wrap);
   });
 
@@ -127,29 +136,34 @@ function statCard(label, value){
   );
 }
 
-function safeStatsSummary(){
+function mergeStatsSummary(serverStats){
   const sys = window.statsSystem;
   const summary = (sys && typeof sys.getStatsSummary === 'function') ? sys.getStatsSummary() : {};
   const raw = sys?.stats || {};
 
-  const gamesPlayed = raw.gamesPlayed ?? summary.gamesPlayed ?? 0;
-  const wins   = raw.gamesWon   ?? summary.wins   ?? 0;
-  const losses = raw.gamesLost  ?? summary.losses ?? 0;
-  const draws  = raw.gamesDrawn ?? summary.draws  ?? summary.totalDraws ?? 0;
-  const winRate = typeof summary.winRate === 'number'
-    ? summary.winRate
-    : (typeof sys?.getWinRate === 'function' ? sys.getWinRate() : 0);
-  const averageMoves = typeof summary.averageMoves === 'number'
-    ? summary.averageMoves
-    : (typeof sys?.getAverageMovesPerGame === 'function' ? sys.getAverageMovesPerGame() : 0);
+  const local = {
+    gamesPlayed: raw.gamesPlayed ?? summary.gamesPlayed ?? 0,
+    wins: raw.gamesWon ?? summary.wins ?? 0,
+    losses: raw.gamesLost ?? summary.losses ?? 0,
+    draws: raw.gamesDrawn ?? summary.draws ?? summary.totalDraws ?? 0,
+    winRate: typeof summary.winRate === 'number'
+      ? summary.winRate
+      : (typeof sys?.getWinRate === 'function' ? sys.getWinRate() : 0),
+    averageMoves: typeof summary.averageMoves === 'number'
+      ? summary.averageMoves
+      : (typeof sys?.getAverageMovesPerGame === 'function' ? sys.getAverageMovesPerGame() : 0),
+  };
+
+  const remote = serverStats || null;
+  const remoteWinRate = (remote && typeof remote.win_rate === 'number') ? remote.win_rate : null;
 
   return {
-    gamesPlayed,
-    wins,
-    losses,
-    draws,
-    winRate,
-    averageMoves,
+    gamesPlayed: (remote && typeof remote.games_played === 'number') ? remote.games_played : local.gamesPlayed,
+    wins: (remote && typeof remote.wins === 'number') ? remote.wins : local.wins,
+    losses: (remote && typeof remote.losses === 'number') ? remote.losses : local.losses,
+    draws: (remote && typeof remote.draws === 'number') ? remote.draws : local.draws,
+    winRate: remoteWinRate ?? local.winRate,
+    averageMoves: local.averageMoves,
   };
 }
 
@@ -171,4 +185,32 @@ function safeAchievements(){
   // фолбэк: показываем минимум
   if (!Array.isArray(items)) items = [];
   return { name, avatar, items };
+}
+
+async function fetchProfileFromServer(){
+  const id = window.me?.id;
+  if (!isNumericId(id)) return { profile: null, error: null };
+  try {
+    const r = await fetch(`/profile/${encodeURIComponent(id)}`, { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    return { profile: data?.profile ?? null, error: null };
+  } catch (error) {
+    return { profile: null, error };
+  }
+}
+
+function isNumericId(id){
+  return typeof id === 'string' ? /^[0-9]+$/.test(id) : Number.isFinite(id);
+}
+
+function buildProfileNotes(serverResult){
+  if (!serverResult) return el('div', {});
+  if (serverResult.error) {
+    return el('div', { style:'color:var(--warn);font-size:12px' }, 'Не удалось загрузить статистику с сервера. Показаны локальные данные.');
+  }
+  if (!serverResult.profile && isNumericId(window.me?.id)) {
+    return el('div', { style:'color:var(--muted);font-size:12px' }, 'Сыграйте первую игру, чтобы статистика появилась в рейтинге.');
+  }
+  return el('div', {});
 }
