@@ -1,5 +1,6 @@
 import { $, el } from '../state.js';
 import { showModal, hideModal, setModalContent } from './modal.js';
+import { statsSystem } from '../stats.js';
 
 export function mountNav() {
   const nav = el('div', { class:'navbar navbar--lg' },
@@ -82,19 +83,22 @@ export function mountNav() {
   $('#tabProfile', nav).addEventListener('click', async () => {
     showModal('Профиль', 'Загрузка…', { label:'Ок', onClick:()=>hideModal() }, { show:false });
 
-    const [serverResult, achs] = await Promise.all([
-      fetchProfileFromServer(),
+    const [profileData, achs] = await Promise.all([
+      statsSystem.loadProfile({ force: true }),
       Promise.resolve(safeAchievements()),
     ]);
 
-    const stats = mergeStatsSummary(serverResult?.profile || null);
+    const stats = profileData?.summary || {};
+    const profile = profileData?.profile || null;
+
+    const displayName = profile?.username || achs.name || 'Профиль';
+    const avatarSrc = profile?.avatar_url || achs.avatar || 'img/logo.svg';
 
     const wrap = el('div', { style:'display:flex;flex-direction:column;gap:12px' },
       el('div', { style:'display:flex;gap:10px;align-items:center' },
-        el('img', { src: (serverResult?.profile?.avatar_url || achs.avatar || 'img/logo.svg'), alt:'', style:'width:40px;height:40px;border-radius:50%;object-fit:cover;border:1px solid var(--line)' }),
-        el('div', { style:'font-weight:800' }, sanitize(achs.name || 'Профиль'))
+        el('img', { src: avatarSrc, alt:'', style:'width:40px;height:40px;border-radius:50%;object-fit:cover;border:1px solid var(--line)' }),
+        el('div', { style:'font-weight:800' }, sanitize(displayName))
       ),
-      // итоги
       el('div', { style:'display:grid;grid-template-columns:repeat(3,1fr);gap:8px' },
         statCard('Игры', stats.gamesPlayed),
         statCard('Победы', stats.wins),
@@ -103,9 +107,8 @@ export function mountNav() {
       el('div', { style:'display:grid;grid-template-columns:repeat(3,1fr);gap:8px' },
         statCard('Ничьи', stats.draws),
         statCard('Ср. ходы', stats.averageMoves),
-        statCard('Винрейт', stats.winRate + '%'),
+        statCard('Винрейт', (stats.winRate ?? 0) + '%'),
       ),
-      // достижения
       el('div', {},
         el('div', { style:'font-weight:700;margin-bottom:6px' }, 'Достижения'),
         achs.items.length
@@ -113,7 +116,7 @@ export function mountNav() {
               ...achs.items.map(t => el('span', { class:'btn', style:'cursor:default' }, '🏅 ' + sanitize(t))))
           : el('div', { style:'color:var(--muted)' }, 'Пока нет')
       ),
-      buildProfileNotes(serverResult)
+      buildProfileNotes(profileData)
     );
 
     setModalContent(wrap);
@@ -136,37 +139,6 @@ function statCard(label, value){
   );
 }
 
-function mergeStatsSummary(serverStats){
-  const sys = window.statsSystem;
-  const summary = (sys && typeof sys.getStatsSummary === 'function') ? sys.getStatsSummary() : {};
-  const raw = sys?.stats || {};
-
-  const local = {
-    gamesPlayed: raw.gamesPlayed ?? summary.gamesPlayed ?? 0,
-    wins: raw.gamesWon ?? summary.wins ?? 0,
-    losses: raw.gamesLost ?? summary.losses ?? 0,
-    draws: raw.gamesDrawn ?? summary.draws ?? summary.totalDraws ?? 0,
-    winRate: typeof summary.winRate === 'number'
-      ? summary.winRate
-      : (typeof sys?.getWinRate === 'function' ? sys.getWinRate() : 0),
-    averageMoves: typeof summary.averageMoves === 'number'
-      ? summary.averageMoves
-      : (typeof sys?.getAverageMovesPerGame === 'function' ? sys.getAverageMovesPerGame() : 0),
-  };
-
-  const remote = serverStats || null;
-  const remoteWinRate = (remote && typeof remote.win_rate === 'number') ? remote.win_rate : null;
-
-  return {
-    gamesPlayed: (remote && typeof remote.games_played === 'number') ? remote.games_played : local.gamesPlayed,
-    wins: (remote && typeof remote.wins === 'number') ? remote.wins : local.wins,
-    losses: (remote && typeof remote.losses === 'number') ? remote.losses : local.losses,
-    draws: (remote && typeof remote.draws === 'number') ? remote.draws : local.draws,
-    winRate: remoteWinRate ?? local.winRate,
-    averageMoves: local.averageMoves,
-  };
-}
-
 function safeAchievements(){
   const name = (window.me && window.me.name) ? window.me.name : 'Player';
   const avatar = (window.me && window.me.avatar) ? window.me.avatar : '';
@@ -185,19 +157,6 @@ function safeAchievements(){
   // фолбэк: показываем минимум
   if (!Array.isArray(items)) items = [];
   return { name, avatar, items };
-}
-
-async function fetchProfileFromServer(){
-  const id = window.me?.id;
-  if (!isNumericId(id)) return { profile: null, error: null };
-  try {
-    const r = await fetch(`/profile/${encodeURIComponent(id)}`, { cache: 'no-store' });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const data = await r.json();
-    return { profile: data?.profile ?? null, error: null };
-  } catch (error) {
-    return { profile: null, error };
-  }
 }
 
 function isNumericId(id){
