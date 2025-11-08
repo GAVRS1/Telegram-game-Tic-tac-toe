@@ -1,6 +1,8 @@
 import { $, el } from '../state.js';
 
 let modal, modalTitle, modalBody, modalPrimary, modalSecondary;
+let primaryHandler = null;
+let secondaryHandler = null;
 
 function ensureModal() {
   if (modal) return;
@@ -52,9 +54,14 @@ export function showModal(title, text, primaryCfg={}, secondaryCfg={}) {
   const { label:pl='ОК', onClick:po=()=>{}, show:ps=true } = primaryCfg || {};
   const { label:sl='Закрыть', onClick:so=()=>hideModal(), show:ss=true } = secondaryCfg || {};
   modalPrimary.textContent = pl;
-  modalPrimary.onclick = () => po();
+  if (primaryHandler) modalPrimary.removeEventListener('click', primaryHandler);
+  primaryHandler = () => po();
+  modalPrimary.addEventListener('click', primaryHandler);
+
   modalSecondary.textContent = sl;
-  modalSecondary.onclick = () => so();
+  if (secondaryHandler) modalSecondary.removeEventListener('click', secondaryHandler);
+  secondaryHandler = () => so();
+  modalSecondary.addEventListener('click', secondaryHandler);
 
   modalPrimary.style.display = ps ? '' : 'none';
   modalSecondary.style.display = ss ? '' : 'none';

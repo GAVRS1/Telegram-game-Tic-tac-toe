@@ -23,7 +23,9 @@ const PUBLIC_URL = (process.env.PUBLIC_URL || "").trim();
 
 // -------- HTTP (Express)
 const app = express();
-app.set("trust proxy", true);
+// We only trust the first proxy (e.g. Cloudflare) instead of all proxies to
+// prevent express-rate-limit from rejecting the configuration as insecure.
+app.set("trust proxy", 1);
 const PUBLIC_DIR = path.resolve(__dirname, "..", "public");
 
 app.use(helmet({
@@ -32,7 +34,8 @@ app.use(helmet({
     directives: {
       "default-src": ["'self'"],
       "img-src": ["'self'", "data:", "https:", "blob:"],
-      "script-src": ["'self'", "'unsafe-inline'"],
+      "script-src": ["'self'"],
+      "script-src-attr": ["'unsafe-inline'"],
       "connect-src": ["'self'", "ws:", "wss:", "https:"],
       "style-src": ["'self'", "'unsafe-inline'"],
       "media-src": ["'self'", "data:"]
