@@ -11,7 +11,7 @@ import { Telegraf } from "telegraf";
 import { validateTelegramWebAppData, extractUserData } from "./telegramAuth.js";
 import { loggingMiddleware } from "./monitoring.js";
 import { validateGameMove, validateHelloMessage, sanitizeString } from "./validation.js";
-import { ensureSchema, upsertUser, incWin, getLeaders } from "./db.js";
+import { ensureSchema, upsertUser, recordMatchOutcome, getLeaders, getUserProfile } from "./db.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,6 +23,7 @@ const PUBLIC_URL = (process.env.PUBLIC_URL || "").trim();
 
 // -------- HTTP (Express)
 const app = express();
+app.set("trust proxy", true);
 const PUBLIC_DIR = path.resolve(__dirname, "..", "public");
 
 app.use(helmet({
@@ -33,7 +34,8 @@ app.use(helmet({
       "img-src": ["'self'", "data:", "https:", "blob:"],
       "script-src": ["'self'", "'unsafe-inline'"],
       "connect-src": ["'self'", "ws:", "wss:", "https:"],
-      "style-src": ["'self'", "'unsafe-inline'"]
+      "style-src": ["'self'", "'unsafe-inline'"],
+      "media-src": ["'self'", "data:"]
     }
   }
 }));
@@ -59,6 +61,20 @@ app.get("/leaders", async (_req, res) => {
     res.json({ ok: true, leaders: list });
   } catch (e) {
     console.error("leaders error:", e);
+    res.status(500).json({ ok: false });
+  }
+});
+
+app.get("/profile/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!/^[0-9]+$/.test(String(id || ""))) {
+      return res.status(400).json({ ok: false, error: "invalid id" });
+    }
+    const profile = await getUserProfile(id);
+    res.json({ ok: true, profile });
+  } catch (e) {
+    console.error("profile error:", e);
     res.status(500).json({ ok: false });
   }
 });
@@ -120,14 +136,15 @@ const endGame = async (gameId, reason="end", winBy=null) => {
   send(toWs(g.O), { t:"game.end", reason, by: winBy });
 
   try {
-    if (reason === "win" && (winBy === "X" || winBy === "O")) {
+    if (winBy === "X" || winBy === "O") {
       const winnerUid = winBy === "X" ? g.X : g.O;
-      if (isNumericId(winnerUid)) {
-        await incWin(winnerUid);
-      }
+      const loserUid = winBy === "X" ? g.O : g.X;
+      await recordMatchOutcome({ winnerId: winnerUid, loserId: loserUid });
+    } else if (reason === "draw") {
+      await recordMatchOutcome({ drawIds: [g.X, g.O] });
     }
   } catch (e) {
-    console.error("incWin error:", e);
+    console.error("recordMatchOutcome error:", e);
   }
 
   games.delete(gameId);
@@ -258,9 +275,16 @@ const handlers = {
     if (res) return endGame(gameId, res.by===null ? "draw" : "win", res.by);
   },
 
-  game_resign(_ws, msg) {
+  game_resign(ws, msg) {
     const { gameId } = msg || {};
-    if (games.has(gameId)) endGame(gameId, "resign", null);
+    const g = games.get(gameId);
+    if (!g) return;
+    const me = userByWs.get(ws)?.id;
+    if (!me) return;
+    let winBy = null;
+    if (me === g.X) winBy = "O";
+    else if (me === g.O) winBy = "X";
+    endGame(gameId, "resign", winBy);
   },
 
   rematch_offer(ws) {
@@ -315,7 +339,12 @@ wss.on("connection", (ws) => {
       if (mapped === ws) wsByUid.delete(u.id);
       userByWs.delete(ws);
       const qi = queue.indexOf(ws); if (qi !== -1) queue.splice(qi, 1);
-      for (const [gid,g] of games) if (g.X===u.id || g.O===u.id) endGame(gid, "disconnect", null);
+      for (const [gid,g] of games) if (g.X===u.id || g.O===u.id) {
+        let winBy = null;
+        if (g.X === u.id && g.O) winBy = "O";
+        else if (g.O === u.id && g.X) winBy = "X";
+        endGame(gid, "disconnect", winBy);
+      }
     }
   });
 });
