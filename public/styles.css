@@ -158,7 +158,8 @@ body{
 .modal .body{margin:0 0 14px;color:var(--muted);max-height:60vh;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
 .modal .body:empty{display:none}
 .modal .body p{margin:0;color:var(--muted)}
-.modal .body .modal-text{line-height:1.4}
+.modal .body .modal-text{line-height:1.4;color:var(--text)}
+.modal .body .modal-phrase{line-height:1.4;color:var(--text);opacity:.88;font-size:14px}
 .modal .row{display:flex;gap:10px;justify-content:flex-end}
 .btn{
   border:1px solid var(--line);
