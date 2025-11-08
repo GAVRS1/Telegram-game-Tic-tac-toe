@@ -110,10 +110,10 @@ openWs(
 
         let title = 'Ничья 🤝';
         let text = `Сыграли вничью с ${oppLabel}.`;
-        
+
         if (youWon) { title = 'Победа 🎉'; text = `Вы обыграли ${oppLabel}.`; audioManager.playWin(); statsSystem.endGame('win'); }
-        if (youLost) { title = 'Поражение 😔'; text = `${oppLabel} выиграл(а).`; audioManager.playLose(); statsSystem.endGame('lose'); }
-        if (msg.win.by === null) { audioManager.playDraw(); statsSystem.endGame('draw'); }
+        else if (youLost) { title = 'Поражение 😔'; text = `${oppLabel} выиграл(а).`; audioManager.playLose(); statsSystem.endGame('lose'); }
+        else if (msg.win.by === null) { audioManager.playDraw(); statsSystem.endGame('draw'); }
 
         showModal(
           title, text,
@@ -149,7 +149,20 @@ openWs(
       );
 
       UI.setStatus('Игра завершена');
-      if (msg.reason === 'resign') { audioManager.playNotification(); statsSystem.endGame('lose'); }
+      const winnerMark = typeof msg.by === 'string' ? msg.by : null;
+      const youWon = winnerMark && winnerMark === Game.you;
+      const youLost = winnerMark && winnerMark !== Game.you;
+
+      if (msg.reason === 'draw') {
+        statsSystem.endGame('draw');
+      } else if (msg.reason === 'resign' || msg.reason === 'disconnect') {
+        if (youWon) { audioManager.playWin(); statsSystem.endGame('win'); }
+        else if (youLost) { audioManager.playLose(); statsSystem.endGame('lose'); }
+        else { audioManager.playNotification(); }
+      } else {
+        if (youWon) { statsSystem.endGame('win'); }
+        else if (youLost) { statsSystem.endGame('lose'); }
+      }
       return;
     }
 
