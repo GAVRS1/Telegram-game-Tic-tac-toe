@@ -1,4 +1,4 @@
-import { $, el } from '../state.js';
+import { $, el, me } from '../state.js';
 import { showModal, hideModal, setModalContent } from './modal.js';
 import { statsSystem } from '../stats.js';
 
@@ -79,44 +79,50 @@ export function mountNav() {
     }
   });
 
-  // === ПРОФИЛЬ (п.3): достижения + локальная статистика ===
+  // === ПРОФИЛЬ: данные из сервера ===
   $('#tabProfile', nav).addEventListener('click', async () => {
     showModal('Профиль', 'Загрузка…', { label:'Ок', onClick:()=>hideModal() }, { show:false });
 
-    const [profileData, achs] = await Promise.all([
-      statsSystem.loadProfile({ force: true }),
-      Promise.resolve(safeAchievements()),
-    ]);
+    const profileResult = await statsSystem.loadProfile({ force: true });
+    const stats = profileResult?.summary || {};
+    const profile = profileResult?.profile || null;
 
-    const stats = profileData?.summary || {};
-    const profile = profileData?.profile || null;
+    const fallbackName = (me?.username && me.username.trim()) ? `@${me.username.replace(/^@/, '')}` : (me?.name || 'Профиль');
+    const displayName = sanitize(profile?.username || fallbackName);
+    const avatarSrc = profile?.avatar_url || me?.avatar || 'img/logo.svg';
 
-    const displayName = profile?.username || achs.name || 'Профиль';
-    const avatarSrc = profile?.avatar_url || achs.avatar || 'img/logo.svg';
+    const infoSection = el('div', { style:'display:flex;gap:10px;align-items:center' },
+      el('img', {
+        src: avatarSrc,
+        alt: displayName,
+        style:'width:40px;height:40px;border-radius:50%;object-fit:cover;border:1px solid var(--line)'
+      }),
+      el('div', { style:'display:flex;flex-direction:column;gap:4px' },
+        el('div', { style:'font-weight:800;font-size:16px' }, displayName),
+        profile?.updated_at
+          ? el('div', { style:'font-size:12px;color:var(--muted)' }, `Обновлено: ${formatDate(profile.updated_at)}`)
+          : null
+      )
+    );
+
+    const statsGrid = el('div', { style:'display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px' },
+      statCard('Игры', stats.gamesPlayed),
+      statCard('Победы', stats.wins),
+      statCard('Поражения', stats.losses),
+      statCard('Ничьи', stats.draws),
+      statCard('Винрейт', `${stats.winRate ?? 0}%`),
+    );
+
+    const achievementsBlock = el('div', {},
+      el('div', { style:'font-weight:700;margin-bottom:6px' }, 'Достижения'),
+      el('div', { style:'color:var(--muted)' }, 'Синхронизация достижений появится позже.')
+    );
 
     const wrap = el('div', { style:'display:flex;flex-direction:column;gap:12px' },
-      el('div', { style:'display:flex;gap:10px;align-items:center' },
-        el('img', { src: avatarSrc, alt:'', style:'width:40px;height:40px;border-radius:50%;object-fit:cover;border:1px solid var(--line)' }),
-        el('div', { style:'font-weight:800' }, sanitize(displayName))
-      ),
-      el('div', { style:'display:grid;grid-template-columns:repeat(3,1fr);gap:8px' },
-        statCard('Игры', stats.gamesPlayed),
-        statCard('Победы', stats.wins),
-        statCard('Поражения', stats.losses),
-      ),
-      el('div', { style:'display:grid;grid-template-columns:repeat(3,1fr);gap:8px' },
-        statCard('Ничьи', stats.draws),
-        statCard('Ср. ходы', stats.averageMoves),
-        statCard('Винрейт', (stats.winRate ?? 0) + '%'),
-      ),
-      el('div', {},
-        el('div', { style:'font-weight:700;margin-bottom:6px' }, 'Достижения'),
-        achs.items.length
-          ? el('div', { style:'display:flex;flex-wrap:wrap;gap:8px' },
-              ...achs.items.map(t => el('span', { class:'btn', style:'cursor:default' }, '🏅 ' + sanitize(t))))
-          : el('div', { style:'color:var(--muted)' }, 'Пока нет')
-      ),
-      buildProfileNotes(profileData)
+      infoSection,
+      statsGrid,
+      achievementsBlock,
+      buildProfileNotes(profileResult)
     );
 
     setModalContent(wrap);
@@ -135,28 +141,18 @@ function sanitize(s){ const d=document.createElement('div'); d.textContent=Strin
 function statCard(label, value){
   return el('div', { style:'border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center' },
     el('div', { style:'font-size:12px;color:var(--muted)' }, sanitize(label)),
-    el('div', { style:'font-weight:800;font-size:16px' }, String(value ?? 0))
+    el('div', { style:'font-weight:800;font-size:16px' }, sanitize(value ?? 0))
   );
 }
 
-function safeAchievements(){
-  const name = (window.me && window.me.name) ? window.me.name : 'Player';
-  const avatar = (window.me && window.me.avatar) ? window.me.avatar : '';
-
-  let items = [];
+function formatDate(value) {
   try {
-    const a = window.achievementSystem;
-    if (a) {
-      // пробуем распространённые варианты API
-      if (typeof a.getUnlocked === 'function') items = a.getUnlocked().map(x => x.title || x.name || String(x));
-      else if (Array.isArray(a.unlocked)) items = a.unlocked.map(x => x.title || x.name || String(x));
-      else if (Array.isArray(a.list)) items = a.list.filter(x => x.unlocked).map(x => x.title || x.name || String(x));
-    }
-  } catch { items = []; }
-
-  // фолбэк: показываем минимум
-  if (!Array.isArray(items)) items = [];
-  return { name, avatar, items };
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleString();
+  } catch {
+    return '';
+  }
 }
 
 function isNumericId(id){
@@ -166,10 +162,10 @@ function isNumericId(id){
 function buildProfileNotes(serverResult){
   if (!serverResult) return el('div', {});
   if (serverResult.error) {
-    return el('div', { style:'color:var(--warn);font-size:12px' }, 'Не удалось загрузить статистику с сервера. Показаны локальные данные.');
+    return el('div', { style:'color:var(--warn);font-size:12px' }, 'Не удалось загрузить статистику с сервера. Повторите попытку позже.');
   }
   if (!serverResult.profile && isNumericId(window.me?.id)) {
-    return el('div', { style:'color:var(--muted);font-size:12px' }, 'Сыграйте первую игру, чтобы статистика появилась в рейтинге.');
+    return el('div', { style:'color:var(--muted);font-size:12px' }, 'Сыграйте первую игру, чтобы увидеть статистику.');
   }
   return el('div', {});
 }
