@@ -73,13 +73,27 @@ const server = http.createServer(app);
 // -------- WS (игра)
 const wss = new WebSocketServer({ server });
 
-// uid -> ws ; ws -> { id,name,avatar,lastOpponent,isVerified }
+// uid -> ws ; ws -> { id,name,username,avatar,lastOpponent,isVerified }
 const wsByUid = new Map();
 const userByWs = new Map();
 
 // gameId -> { X:uid, O:uid, board[9], turn }
 const games = new Map();
 const queue = [];
+
+const buildTelegramName = (user) => {
+  if (!user) return 'Player';
+  const first = (user.first_name || '').trim();
+  const last = (user.last_name || '').trim();
+  const username = (user.username || '').trim();
+  const combined = `${first} ${last}`.trim();
+  return sanitizeString(combined || username || 'Player');
+};
+
+const sanitizeUsername = (value) => {
+  if (!value || typeof value !== 'string') return '';
+  return value.trim().replace(/^@/, '').replace(/[^a-zA-Z0-9_]/g, '').slice(0, 32);
+};
 
 const send = (ws, obj) => { try { ws?.readyState === 1 && ws.send(JSON.stringify(obj)); } catch {} };
 const toWs = (uid) => wsByUid.get(uid);
@@ -133,7 +147,7 @@ const startGame = (uidA, uidB) => {
   if (a) a.lastOpponent = uidB;
   if (b) b.lastOpponent = uidA;
 
-  const pick = (u) => u ? ({ id:u.id, name:u.name, avatar:u.avatar }) : null;
+  const pick = (u) => u ? ({ id:u.id, name:u.name, username:u.username || '', avatar:u.avatar }) : null;
 
   send(toWs(X), { t:"game.start", gameId, you:"X", turn:"X", opp: pick(b) });
   send(toWs(O), { t:"game.start", gameId, you:"O", turn:"X", opp: pick(a) });
@@ -161,15 +175,17 @@ const handlers = {
     const name = sanitizeString(msg.name || 'Player');
     const avatar = (msg.avatar || '').slice(0, 500);
     const initData = typeof msg.initData === 'string' ? msg.initData : '';
+    const usernameHint = sanitizeUsername(msg.username);
 
-    let profile = { id: uid, name, avatar, isVerified: false, source: 'fallback' };
+    let profile = { id: uid, name, username: usernameHint, avatar, isVerified: false, source: 'fallback' };
 
     if (initData && validateTelegramWebAppData(initData)) {
       const userData = extractUserData(initData);
       if (userData && String(userData.id) === uid) {
         profile = {
           id: uid,
-          name: userData.first_name || userData.username || 'Player',
+          name: buildTelegramName(userData),
+          username: (userData.username || '').trim(),
           avatar: userData.photo_url || '',
           isVerified: true,
           source: 'telegram'
@@ -181,7 +197,14 @@ const handlers = {
     if (prev && prev !== ws) { try { prev.close(); } catch {} }
 
     wsByUid.set(uid, ws);
-    userByWs.set(ws, { id: profile.id, name: profile.name, avatar: profile.avatar, lastOpponent: null, isVerified: profile.isVerified });
+    userByWs.set(ws, {
+      id: profile.id,
+      name: profile.name,
+      username: profile.username,
+      avatar: profile.avatar,
+      lastOpponent: null,
+      isVerified: profile.isVerified,
+    });
 
     // лог для отладки отображения имён/аватаров
     console.log(`[HELLO] uid=${uid} name="${profile.name}" verified=${profile.isVerified} src=${profile.source}`);
@@ -190,7 +213,8 @@ const handlers = {
     try {
       await ensureSchema();
       if (/^[0-9]+$/.test(uid)) {
-        await upsertUser({ id: uid, username: profile.name, avatar_url: profile.avatar });
+        const usernameForDb = profile.username || profile.name;
+        await upsertUser({ id: uid, username: usernameForDb, avatar_url: profile.avatar });
       }
     } catch {}
   },
@@ -244,7 +268,7 @@ const handlers = {
     if (!me?.lastOpponent) return;
     const oppWs = wsByUid.get(me.lastOpponent);
     if (oppWs) {
-      const from = { id: me.id, name: me.name, avatar: me.avatar };
+      const from = { id: me.id, name: me.name, username: me.username || '', avatar: me.avatar };
       send(oppWs, { t:"rematch.offer", from });
     }
   },

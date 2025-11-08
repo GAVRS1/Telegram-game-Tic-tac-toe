@@ -10,6 +10,7 @@ export function validateHelloMessage(msg) {
   if (!msg.uid || typeof msg.uid !== 'string') return false;
   if (msg.name && typeof msg.name !== 'string') return false;
   if (msg.avatar && typeof msg.avatar !== 'string') return false;
+  if (msg.username && typeof msg.username !== 'string') return false;
   return true;
 }
 
