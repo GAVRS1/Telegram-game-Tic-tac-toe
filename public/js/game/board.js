@@ -2,9 +2,11 @@ import { $, el, me, Game, vibrate, clickAudio, getTelegramWebApp } from '../stat
 import { hideModal } from '../ui/modal.js';
 import { sendWs } from '../ws.js';
 import { statsSystem } from '../stats.js';
+import { achievementSystem } from '../achievements.js';
 
 let statusEl, youAva, youName, youUsername, youMark, oppAva, oppName, oppUsername, oppMark, boardEl;
 const cells = [];
+let lastMoveTs = 0;
 
 function setStatus(text, blink=false){
   statusEl.textContent = text;
@@ -67,10 +69,15 @@ function renderBoard(){
 function onCellClick(i){
   if (!Game.gameId || !Game.myMoveAllowed() || Game.board[i]) return;
 
+  const now = Date.now();
+  const dt = lastMoveTs ? (now - lastMoveTs) : 0;
+  lastMoveTs = now;
+
   vibrate(10);
   clickAudio.play();
 
   statsSystem.recordMove(i);
+  if (dt > 0) achievementSystem.onFastMove(dt);
 
   sendWs({ t:'game.move', gameId: Game.gameId, i });
 }

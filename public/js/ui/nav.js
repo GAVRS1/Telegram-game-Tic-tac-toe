@@ -105,7 +105,7 @@ export function mountNav() {
       )
     );
 
-    const statsGrid = el('div', { class: 'profile-section stats-grid' },
+    const statsGrid = el('div', { style:'display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px' },
       statCard('Игры', stats.gamesPlayed),
       statCard('Победы', stats.wins),
       statCard('Поражения', stats.losses),
@@ -113,10 +113,12 @@ export function mountNav() {
       statCard('Винрейт', `${stats.winRate ?? 0}%`),
     );
 
-    const achievements = Array.isArray(profile?.achievements) ? profile.achievements : [];
-    const achievementsBlock = buildAchievementsSection(achievements);
+    const achievementsBlock = el('div', {},
+      el('div', { style:'font-weight:700;margin-bottom:6px' }, 'Достижения'),
+      el('div', { style:'color:var(--muted)' }, 'Синхронизация достижений появится позже.')
+    );
 
-    const wrap = el('div', { class: 'profile-modal-content' },
+    const wrap = el('div', { style:'display:flex;flex-direction:column;gap:12px' },
       infoSection,
       statsGrid,
       achievementsBlock,
@@ -137,9 +139,9 @@ export function mountNav() {
 function sanitize(s){ const d=document.createElement('div'); d.textContent=String(s??''); return d.textContent; }
 
 function statCard(label, value){
-  return el('div', { class: 'stat-card' },
-    el('div', { class: 'stat-label' }, sanitize(label)),
-    el('div', { class: 'stat-value' }, sanitize(value ?? 0))
+  return el('div', { style:'border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center' },
+    el('div', { style:'font-size:12px;color:var(--muted)' }, sanitize(label)),
+    el('div', { style:'font-weight:800;font-size:16px' }, sanitize(value ?? 0))
   );
 }
 
@@ -166,97 +168,4 @@ function buildProfileNotes(serverResult){
     return el('div', { style:'color:var(--muted);font-size:12px' }, 'Сыграйте первую игру, чтобы увидеть статистику.');
   }
   return el('div', {});
-}
-
-function buildAchievementsSection(list) {
-  const unlocked = list.filter(item => item?.unlocked).length;
-  const total = list.length;
-
-  const header = el('div', { class: 'achievements-header' },
-    el('div', { class: 'section-title' }, 'Достижения'),
-    total > 0
-      ? el('div', { class: 'achievement-count' }, `${unlocked}/${total}`)
-      : null
-  );
-
-  if (!total) {
-    return el('div', { class: 'profile-section achievements-section' },
-      header,
-      el('div', { class: 'achievements-empty' }, 'Сыграйте несколько игр, чтобы открыть достижения.')
-    );
-  }
-
-  const cards = list.map(item => achievementCard(item));
-  return el('div', { class: 'profile-section achievements-section' },
-    header,
-    el('div', { class: 'achievements-grid' }, ...cards)
-  );
-}
-
-function achievementCard(achievement) {
-  const percent = Math.max(0, Math.min(100, Number(achievement?.percent ?? 0)));
-  const requiresGames = Number(achievement?.requiresGames ?? 0);
-  const progressDisplay = formatAchievementProgress(achievement);
-  const unlocked = !!achievement?.unlocked;
-
-  const card = el('div', { class: `achievement-card${unlocked ? ' is-unlocked' : ''}` },
-    el('div', { class: 'achievement-icon-frame' },
-      el('div', { class: 'achievement-icon' }, sanitize(achievement?.icon || '🎯'))
-    ),
-    el('div', { class: 'achievement-body' },
-      el('div', { class: 'achievement-title-row' },
-        el('div', { class: 'achievement-name' }, sanitize(achievement?.name || 'Достижение')),
-        el('div', { class: `achievement-difficulty ${sanitizeClass(achievement?.difficulty)}` },
-          formatDifficulty(achievement?.difficulty)
-        )
-      ),
-      el('div', { class: 'achievement-description' }, sanitize(achievement?.description || '')),
-      el('div', { class: 'achievement-progress' },
-        el('div', { class: 'achievement-progress-bar' },
-          el('div', { class: 'achievement-progress-fill', style: `width:${percent}%` })
-        ),
-        el('div', { class: 'achievement-progress-text' }, progressDisplay)
-      ),
-      (!achievement?.requirementMet && requiresGames > 0)
-        ? el('div', { class: 'achievement-hint' }, `Доступно после ${requiresGames} игр`)
-        : null,
-      unlocked && achievement?.unlocked_at
-        ? el('div', { class: 'achievement-hint unlocked-hint' }, `Открыто: ${formatDate(achievement.unlocked_at)}`)
-        : null
-    )
-  );
-
-  return card;
-}
-
-function formatAchievementProgress(achievement) {
-  if (!achievement) return '';
-  const target = Number(achievement.target ?? 0);
-  if (achievement.metric === 'win_rate') {
-    const progressValue = Math.min(100, Math.round(Number(achievement.progress ?? 0)));
-    return `${progressValue}% / ${target}%`;
-  }
-  const progressValue = Math.max(0, Math.round(Number(achievement.progress ?? 0)));
-  const capped = target > 0 ? Math.min(progressValue, target) : progressValue;
-  return `${capped} / ${target}`;
-}
-
-function sanitizeClass(value) {
-  return String(value || '').trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '');
-}
-
-function formatDifficulty(value) {
-  const difficulty = String(value || '').toLowerCase();
-  switch (difficulty) {
-    case 'bronze':
-      return 'Bronze';
-    case 'silver':
-      return 'Silver';
-    case 'gold':
-      return 'Gold';
-    case 'platinum':
-      return 'Platinum';
-    default:
-      return '—';
-  }
 }
