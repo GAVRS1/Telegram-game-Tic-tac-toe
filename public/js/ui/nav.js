@@ -113,10 +113,7 @@ export function mountNav() {
       statCard('Винрейт', `${stats.winRate ?? 0}%`),
     );
 
-    const achievementsBlock = el('div', {},
-      el('div', { style:'font-weight:700;margin-bottom:6px' }, 'Достижения'),
-      el('div', { style:'color:var(--muted)' }, 'Синхронизация достижений появится позже.')
-    );
+    const achievementsBlock = buildAchievementsSection(profile);
 
     const wrap = el('div', { style:'display:flex;flex-direction:column;gap:12px' },
       infoSection,
@@ -168,4 +165,100 @@ function buildProfileNotes(serverResult){
     return el('div', { style:'color:var(--muted);font-size:12px' }, 'Сыграйте первую игру, чтобы увидеть статистику.');
   }
   return el('div', {});
+}
+
+function buildAchievementsSection(profile) {
+  const achievements = Array.isArray(profile?.achievements) ? profile.achievements : [];
+  const total = achievements.length;
+  const unlocked = achievements.filter(a => a?.unlocked).length;
+
+  const header = el('div', { class: 'achievements-header' },
+    el('div', { class: 'achievements-title' }, 'Достижения'),
+    el('div', { class: 'achievements-counter' }, total > 0 ? `${unlocked}/${total}` : '0/0')
+  );
+
+  if (total === 0) {
+    return el('div', { class: 'achievements-section' },
+      header,
+      el('div', { class: 'achievements-empty' }, 'Достижения появятся после первой игры.')
+    );
+  }
+
+  const cards = achievements.map(buildAchievementCard);
+
+  return el('div', { class: 'achievements-section' },
+    header,
+    el('div', { class: 'achievements-grid' }, ...cards)
+  );
+}
+
+function buildAchievementCard(achievement) {
+  const percent = clampPercent(Number(achievement?.progress_percent ?? 0));
+  const progressText = formatAchievementProgressText(achievement);
+  const frameClass = String(achievement?.extra?.frame || '').trim().toLowerCase();
+  const cardClasses = ['achievement-card'];
+  if (achievement?.unlocked) cardClasses.push('achievement-card--unlocked');
+
+  const frameClasses = ['achievement-frame'];
+  if (frameClass) frameClasses.push(`achievement-frame--${frameClass}`);
+
+  const hintText = buildAchievementHint(achievement);
+
+  return el('div', { class: cardClasses.join(' ') },
+    el('div', { class: frameClasses.join(' ') },
+      achievement?.image_url
+        ? el('img', { src: achievement.image_url, alt: sanitize(achievement.name || ''), class: 'achievement-image' })
+        : el('span', { class: 'achievement-icon' }, sanitize(achievement?.icon || '🏆'))
+    ),
+    el('div', { class: 'achievement-body' },
+      el('div', { class: 'achievement-row' },
+        el('div', { class: 'achievement-name' }, sanitize(achievement?.name || 'Без названия')),
+        el('div', { class: 'achievement-status' }, achievement?.unlocked ? 'Получено' : `${percent}%`)
+      ),
+      el('div', { class: 'achievement-description' }, sanitize(achievement?.description || '')),
+      el('div', { class: 'achievement-progress' },
+        el('div', { class: 'achievement-progress-bar' },
+          el('div', { class: 'achievement-progress-fill', style: `width:${percent}%` })
+        ),
+        el('div', { class: 'achievement-progress-text' }, progressText)
+      ),
+      hintText
+        ? el('div', { class: 'achievement-hint' }, hintText)
+        : null
+    )
+  );
+}
+
+function clampPercent(v) {
+  if (!Number.isFinite(v)) return 0;
+  return Math.max(0, Math.min(100, Math.round(v)));
+}
+
+function formatAchievementProgressText(achievement) {
+  const target = Number(achievement?.target ?? 0) || 0;
+  const value = Number(achievement?.progress_value ?? 0) || 0;
+  if (achievement?.metric === 'win_rate') {
+    return `${Math.round(value)}% / ${target}%`;
+  }
+  const capped = target > 0 ? Math.min(value, target) : value;
+  return `${Math.round(capped)}/${target}`;
+}
+
+function buildAchievementHint(achievement) {
+  if (achievement?.metric === 'win_rate') {
+    const minGames = Number(achievement?.details?.minGames ?? achievement?.extra?.min_games ?? 0) || 0;
+    const gamesPlayed = Number(achievement?.details?.gamesPlayed ?? 0) || 0;
+    if (minGames > 0 && gamesPlayed < minGames) {
+      const remaining = Math.max(0, minGames - gamesPlayed);
+      if (remaining > 0) {
+        return `Сыграйте ещё ${remaining} ${declOfNum(remaining, ['игру', 'игры', 'игр'])}, чтобы открыть достижение.`;
+      }
+    }
+  }
+  return '';
+}
+
+function declOfNum(number, titles) {
+  const cases = [2, 0, 1, 1, 1, 2];
+  return titles[(number % 100 > 4 && number % 100 < 20) ? 2 : cases[(number % 10 < 5) ? number % 10 : 5]] || '';
 }

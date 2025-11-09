@@ -2,7 +2,6 @@ import { $, el, me, Game, vibrate, clickAudio, getTelegramWebApp } from '../stat
 import { hideModal } from '../ui/modal.js';
 import { sendWs } from '../ws.js';
 import { statsSystem } from '../stats.js';
-import { achievementSystem } from '../achievements.js';
 
 let statusEl, youAva, youName, youUsername, youMark, oppAva, oppName, oppUsername, oppMark, boardEl;
 const cells = [];
@@ -77,8 +76,6 @@ function onCellClick(i){
   clickAudio.play();
 
   statsSystem.recordMove(i);
-  if (dt > 0) achievementSystem.onFastMove(dt);
-
   sendWs({ t:'game.move', gameId: Game.gameId, i });
 }
 

@@ -6,14 +6,12 @@ import { mountBoard, UI, highlightWin, clearHighlights, toLobby } from './game/b
 import { AnimationController } from './animations.js';
 import { notificationSystem } from './notifications.js';
 import { audioManager } from './audio.js';
-import { achievementSystem } from './achievements.js';
 import { statsSystem } from './stats.js';
 
 const animationController = new AnimationController();
 
 window.notificationSystem = notificationSystem;
 window.audioManager = audioManager;
-window.achievementSystem = achievementSystem;
 window.statsSystem = statsSystem;
 
 const appRoot = document.getElementById('app') || document.body;

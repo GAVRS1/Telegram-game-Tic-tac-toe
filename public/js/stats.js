@@ -104,15 +104,6 @@ export class StatsSystem {
       positions: this.currentGame.positions.slice(),
     };
 
-    if (window.achievementSystem) {
-      const normalized = result === 'loss' ? 'lose' : result;
-      if (normalized === 'win') {
-        window.achievementSystem.onGameWon(payload);
-      } else if (normalized === 'lose') {
-        window.achievementSystem.onGameLost();
-      }
-    }
-
     this.queueServerSync();
 
     this.currentGame = {
