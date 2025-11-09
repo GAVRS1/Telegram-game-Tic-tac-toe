@@ -44,13 +44,24 @@ export class NotificationSystem {
   createNotification(message, type, id) {
     const notification = document.createElement('div');
     notification.className = `notification ${type}`;
-    notification.innerHTML = `
-      <div class="notification-content">
-        <span class="notification-message">${this.escapeHtml(message)}</span>
-        <button class="notification-close" onclick="notificationSystem.hide(${id})">×</button>
-      </div>
-    `;
-    
+
+    const content = document.createElement('div');
+    content.className = 'notification-content';
+
+    const messageEl = document.createElement('span');
+    messageEl.className = 'notification-message';
+    messageEl.innerHTML = this.escapeHtml(message);
+
+    const closeButton = document.createElement('button');
+    closeButton.className = 'notification-close';
+    closeButton.type = 'button';
+    closeButton.textContent = '×';
+    closeButton.addEventListener('click', () => this.hide(id));
+
+    content.appendChild(messageEl);
+    content.appendChild(closeButton);
+    notification.appendChild(content);
+
     return notification;
   }
 

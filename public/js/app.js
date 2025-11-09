@@ -1,4 +1,4 @@
-import { me, Game, refreshIdentity } from './state.js';
+import { me, Game, refreshIdentity, WIN_PHRASES, LOSE_PHRASES, DRAW_PHRASES, pick, el } from './state.js';
 import { openWs, sendWs } from './ws.js';
 import { mountNav } from './ui/nav.js';
 import { showModal, hideModal } from './ui/modal.js';
@@ -41,6 +41,13 @@ nav.onAction((mode) => {
   if (mode === 'rematch') inviteLastOpponent(); // пункт 1: нажали «Реванш» → сразу отправляем приглашение
 });
 
+function buildResultContent(baseText, phrasesPool) {
+  const blocks = [el('p', { class: 'modal-text' }, String(baseText ?? ''))];
+  const extra = Array.isArray(phrasesPool) && phrasesPool.length ? pick(phrasesPool) : null;
+  if (extra) blocks.push(el('p', { class: 'modal-phrase' }, extra));
+  return blocks;
+}
+
 function inviteLastOpponent() {
   if (!Game.lastOpp?.id) { sendWs({ t: 'queue.join' }); return; }
   UI.setStatus('Отправлено приглашение на реванш…', true);
@@ -55,7 +62,7 @@ function declineRematch(fromId) { sendWs({ t: 'rematch.decline', to: fromId }); 
 openWs(
   () => {
     const initData = window?.Telegram?.WebApp?.initData || '';
-    sendWs({ t: 'hello', uid: me.id, name: me.name, avatar: me.avatar, initData });
+    sendWs({ t: 'hello', uid: me.id, name: me.name, username: me.username, avatar: me.avatar, initData });
     UI.setStatus('Онлайн: подключено');
     nav.setMode('find');
     UI.applyNames();
@@ -65,7 +72,7 @@ openWs(
     setTimeout(() => {
       if (refreshIdentity()) {
         const initData2 = window?.Telegram?.WebApp?.initData || '';
-        sendWs({ t: 'hello', uid: me.id, name: me.name, avatar: me.avatar, initData: initData2 });
+        sendWs({ t: 'hello', uid: me.id, name: me.name, username: me.username, avatar: me.avatar, initData: initData2 });
         UI.applyNames();
       }
     }, 120);
@@ -110,13 +117,29 @@ openWs(
 
         let title = 'Ничья 🤝';
         let text = `Сыграли вничью с ${oppLabel}.`;
-        
-        if (youWon) { title = 'Победа 🎉'; text = `Вы обыграли ${oppLabel}.`; audioManager.playWin(); statsSystem.endGame('win'); }
-        if (youLost) { title = 'Поражение 😔'; text = `${oppLabel} выиграл(а).`; audioManager.playLose(); statsSystem.endGame('lose'); }
-        if (msg.win.by === null) { audioManager.playDraw(); statsSystem.endGame('draw'); }
+        let phrasePool = DRAW_PHRASES;
+
+        if (youWon) {
+          title = 'Победа 🎉';
+          text = `Вы обыграли ${oppLabel}.`;
+          phrasePool = WIN_PHRASES;
+          audioManager.playWin();
+          statsSystem.endGame('win');
+        } else if (youLost) {
+          title = 'Поражение 😔';
+          text = `${oppLabel} выиграл(а).`;
+          phrasePool = LOSE_PHRASES;
+          audioManager.playLose();
+          statsSystem.endGame('lose');
+        } else {
+          audioManager.playDraw();
+          statsSystem.endGame('draw');
+        }
+
+        const modalContent = buildResultContent(text, phrasePool);
 
         showModal(
-          title, text,
+          title, modalContent,
           { label: 'Реванш', onClick: () => { hideModal(); inviteLastOpponent(); } }, // пункт 1: кнопка модалки тоже сразу шлёт приглашение
           { label: 'Выйти', onClick: () => { toLobby(); nav.setMode('find'); } }
         );
@@ -133,29 +156,97 @@ openWs(
       // гарантируем, что lastOpp не потеряется даже при дисконнекте/сдаче
       if (!Game.lastOpp && Game.opp) Game.lastOpp = { ...Game.opp };
 
+      const winnerMark = typeof msg.by === 'string' ? msg.by : null;
+      const youWon = winnerMark && winnerMark === Game.you;
+      const youLost = winnerMark && winnerMark !== Game.you;
+
+      if (msg.reason === 'win' || msg.reason === 'draw') {
+        nav.setMode('rematch');
+        return;
+      }
+
       nav.setMode('rematch');
 
-      const text = msg.reason === 'resign'
-        ? 'Оппонент сдался.'
-        : msg.reason === 'disconnect'
-        ? 'Оппонент отключился.'
-        : 'Игра завершена.';
+      let title = 'Игра завершена';
+      let mainText = 'Игра завершена.';
+      let phrases = null;
+      let statusText = 'Игра завершена';
+
+      if (msg.reason === 'resign') {
+        if (youWon) {
+          title = 'Победа 🎉';
+          mainText = 'Оппонент сдался.';
+          phrases = WIN_PHRASES;
+          statusText = 'Победа!';
+          audioManager.playWin();
+          statsSystem.endGame('win');
+        } else if (youLost) {
+          title = 'Поражение 😔';
+          mainText = 'Вы сдались.';
+          phrases = LOSE_PHRASES;
+          statusText = 'Поражение';
+          audioManager.playLose();
+          statsSystem.endGame('lose');
+        } else {
+          mainText = 'Игра завершилась сдачей.';
+          audioManager.playNotification();
+        }
+      } else if (msg.reason === 'disconnect') {
+        if (youWon) {
+          title = 'Победа 🎉';
+          mainText = 'Оппонент отключился.';
+          phrases = WIN_PHRASES;
+          statusText = 'Победа!';
+          audioManager.playWin();
+          statsSystem.endGame('win');
+        } else if (youLost) {
+          title = 'Поражение 😔';
+          mainText = 'Вы были отключены.';
+          phrases = LOSE_PHRASES;
+          statusText = 'Поражение';
+          audioManager.playLose();
+          statsSystem.endGame('lose');
+        } else {
+          mainText = 'Игра завершилась из-за отключения.';
+          audioManager.playNotification();
+        }
+      } else {
+        if (youWon) {
+          title = 'Победа 🎉';
+          mainText = 'Вы победили!';
+          phrases = WIN_PHRASES;
+          statusText = 'Победа!';
+          statsSystem.endGame('win');
+        } else if (youLost) {
+          title = 'Поражение 😔';
+          mainText = 'Вы проиграли.';
+          phrases = LOSE_PHRASES;
+          statusText = 'Поражение';
+          statsSystem.endGame('lose');
+        }
+      }
+
+      const modalContent = buildResultContent(mainText, phrases);
 
       showModal(
-        'Игра завершена',
-        text,
+        title,
+        modalContent,
         { label: 'Реванш', onClick: () => { hideModal(); inviteLastOpponent(); } },
         { label: 'Выйти', onClick: () => { toLobby(); nav.setMode('find'); } }
       );
 
-      UI.setStatus('Игра завершена');
-      if (msg.reason === 'resign') { audioManager.playNotification(); statsSystem.endGame('lose'); }
+      UI.setStatus(statusText);
       return;
     }
 
     if (msg.t === 'rematch.offer' && msg.from) {
       if (String(msg.from.id) === String(me.id)) return;
-      Game.lastOpp = { id: msg.from.id, name: msg.from.name, avatar: msg.from.avatar };
+      Game.lastOpp = {
+        id: msg.from.id,
+        name: msg.from.name,
+        username: msg.from.username || '',
+        avatar: msg.from.avatar,
+      };
       showModal(
         'Реванш',
         `${msg.from.name || 'Оппонент'} предлагает реванш!`,

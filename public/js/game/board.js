@@ -1,4 +1,4 @@
-import { $, el, me, Game, vibrate, clickAudio } from '../state.js';
+import { $, el, me, Game, vibrate, clickAudio, getTelegramWebApp } from '../state.js';
 import { hideModal } from '../ui/modal.js';
 import { sendWs } from '../ws.js';
 import { statsSystem } from '../stats.js';
@@ -17,20 +17,23 @@ function setTurnBar(_yourTurn){ /* no-op */ }
 
 function applyNames(){
   const myName = (me.name && me.name.trim()) ? me.name : 'Вы';
+  const myUsername = (me.username && me.username.trim()) ? '@' + me.username.replace(/^@/, '') : '';
   youName.textContent = myName;
-  youName.title = myName;
+  youName.title = myUsername ? `${myName} (${myUsername})` : myName;
   youName.setAttribute('aria-label', myName);
   youAva.src = me.avatar || 'img/logo.svg';
   youAva.alt = myName;
 
   let oppLabel = 'Оппонент';
   let oppAvaSrc = 'img/logo.svg';
+  let oppUsername = '';
   if (Game.opp && String(Game.opp.id) !== String(me.id)) {
     oppLabel = (Game.opp.name && Game.opp.name.trim()) ? Game.opp.name : 'Оппонент';
     oppAvaSrc = Game.opp.avatar || 'img/logo.svg';
+    oppUsername = (Game.opp.username && Game.opp.username.trim()) ? '@' + Game.opp.username.replace(/^@/, '') : '';
   }
   oppName.textContent = oppLabel;
-  oppName.title = oppLabel;
+  oppName.title = oppUsername ? `${oppLabel} (${oppUsername})` : oppLabel;
   oppName.setAttribute('aria-label', oppLabel);
   oppAva.src = oppAvaSrc;
   oppAva.alt = oppLabel;
@@ -93,6 +96,24 @@ export function mountBoard(root){
     )
   );
   root.appendChild(wrap);
+
+  const authorBadge = el('button', { class:'author-badge', type:'button', title:'Автор 0xGavrs' },
+    el('img', { src:'https://t.me/i/userpic/320/rsgavrs.jpg', alt:'0xGavrs', loading:'lazy' }),
+    el('div', { style:'display:flex;flex-direction:column;align-items:flex-start;line-height:1.2' },
+      el('span', {}, '0xGavrs'),
+      el('small', {}, 'Автор игры')
+    )
+  );
+  authorBadge.addEventListener('click', () => {
+    const link = 'https://t.me/rsgavrs';
+    try {
+      if (TG?.openTelegramLink) TG.openTelegramLink(link);
+      else window.open(link, '_blank', 'noopener');
+    } catch {
+      window.open(link, '_blank', 'noopener');
+    }
+  }, { passive:true });
+  wrap.appendChild(authorBadge);
 
   const styleFix = document.createElement('style');
   styleFix.textContent = `

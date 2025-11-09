@@ -1,5 +1,6 @@
-import { $, el } from '../state.js';
-import { showModal, hideModal } from './modal.js';
+import { $, el, me } from '../state.js';
+import { showModal, hideModal, setModalContent } from './modal.js';
+import { statsSystem } from '../stats.js';
 
 export function mountNav() {
   const nav = el('div', { class:'navbar navbar--lg' },
@@ -53,8 +54,6 @@ export function mountNav() {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const data = await r.json();
       const rows = Array.isArray(data?.leaders) ? data.leaders : [];
-      const box = document.querySelector('.modal .box'); if (!box) return;
-
       const list = el('div', { style:'display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow:auto' });
       if (rows.length === 0) {
         list.appendChild(el('div', {}, 'Список пуст.'));
@@ -65,59 +64,68 @@ export function mountNav() {
               el('div', { style:'width:24px;text-align:right;font-weight:700' }, String(i+1)),
               el('img', { src: u.avatar_url || 'img/logo.svg', alt:'', style:'width:28px;height:28px;border-radius:50%;object-fit:cover;border:1px solid var(--line)' }),
               el('div', { style:'flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' }, sanitize(u.username || 'Player')),
-              el('div', { style:'font-weight:700' }, `🏆 ${u.wins ?? 0}`)
+              el('div', { style:'display:flex;flex-direction:column;align-items:flex-end;gap:4px;font-size:12px;color:var(--muted)' },
+                el('div', { style:'font-weight:700;color:var(--text)' }, `🏆 ${Number(u.wins ?? 0)}`),
+                el('div', {}, `🎮 ${Number(u.games_played ?? 0)} | ⚖️ ${Number(u.win_rate ?? 0)}%`)
+              )
             )
           );
         });
       }
-
-      // заменить текст в модалке на список
-      const p = box.querySelector('p');
-      if (p) { p.replaceWith(list); } else { box.appendChild(list); }
+      setModalContent(list);
     } catch (e) {
-      const box = document.querySelector('.modal .box');
-      if (box) {
-        const p = box.querySelector('p');
-        const msg = 'Рейтинг недоступен. Проверь БД и /leaders.';
-        if (p) p.textContent = msg; else box.appendChild(el('p', {}, msg));
-      }
+      const msg = 'Рейтинг недоступен. Проверь БД и /leaders.';
+      setModalContent(msg);
     }
   });
 
-  // === ПРОФИЛЬ (п.3): достижения + локальная статистика ===
-  $('#tabProfile', nav).addEventListener('click', () => {
-    const stats = safeStatsSummary();
-    const achs  = safeAchievements();
+  // === ПРОФИЛЬ: данные из сервера ===
+  $('#tabProfile', nav).addEventListener('click', async () => {
+    showModal('Профиль', 'Загрузка…', { label:'Ок', onClick:()=>hideModal() }, { show:false });
 
-    const wrap = el('div', { style:'display:flex;flex-direction:column;gap:12px' },
-      el('div', { style:'display:flex;gap:10px;align-items:center' },
-        el('img', { src: achs.avatar || 'img/logo.svg', alt:'', style:'width:40px;height:40px;border-radius:50%;object-fit:cover;border:1px solid var(--line)' }),
-        el('div', { style:'font-weight:800' }, sanitize(achs.name || 'Профиль'))
-      ),
-      // итоги
-      el('div', { style:'display:grid;grid-template-columns:repeat(3,1fr);gap:8px' },
-        statCard('Игры', stats.gamesPlayed),
-        statCard('Победы', stats.wins),
-        statCard('Поражения', stats.losses),
-      ),
-      el('div', { style:'display:grid;grid-template-columns:repeat(3,1fr);gap:8px' },
-        statCard('Ничьи', stats.draws),
-        statCard('Ср. ходы', stats.averageMoves),
-        statCard('Винрейт', stats.winRate + '%'),
-      ),
-      // достижения
-      el('div', {},
-        el('div', { style:'font-weight:700;margin-bottom:6px' }, 'Достижения'),
-        achs.items.length
-          ? el('div', { style:'display:flex;flex-wrap:wrap;gap:8px' },
-              ...achs.items.map(t => el('span', { class:'btn', style:'cursor:default' }, '🏅 ' + sanitize(t))))
-          : el('div', { style:'color:var(--muted)' }, 'Пока нет')
+    const profileResult = await statsSystem.loadProfile({ force: true });
+    const stats = profileResult?.summary || {};
+    const profile = profileResult?.profile || null;
+
+    const fallbackName = (me?.username && me.username.trim()) ? `@${me.username.replace(/^@/, '')}` : (me?.name || 'Профиль');
+    const displayName = sanitize(profile?.username || fallbackName);
+    const avatarSrc = profile?.avatar_url || me?.avatar || 'img/logo.svg';
+
+    const infoSection = el('div', { style:'display:flex;gap:10px;align-items:center' },
+      el('img', {
+        src: avatarSrc,
+        alt: displayName,
+        style:'width:40px;height:40px;border-radius:50%;object-fit:cover;border:1px solid var(--line)'
+      }),
+      el('div', { style:'display:flex;flex-direction:column;gap:4px' },
+        el('div', { style:'font-weight:800;font-size:16px' }, displayName),
+        profile?.updated_at
+          ? el('div', { style:'font-size:12px;color:var(--muted)' }, `Обновлено: ${formatDate(profile.updated_at)}`)
+          : null
       )
     );
 
-    showModal('Профиль', '', { label:'Ок', onClick:()=>hideModal() }, { show:false });
-    const box = document.querySelector('.modal .box');
-    const p = box.querySelector('p'); if (p) p.replaceWith(wrap); else box.appendChild(wrap);
+    const statsGrid = el('div', { style:'display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px' },
+      statCard('Игры', stats.gamesPlayed),
+      statCard('Победы', stats.wins),
+      statCard('Поражения', stats.losses),
+      statCard('Ничьи', stats.draws),
+      statCard('Винрейт', `${stats.winRate ?? 0}%`),
+    );
+
+    const achievementsBlock = el('div', {},
+      el('div', { style:'font-weight:700;margin-bottom:6px' }, 'Достижения'),
+      el('div', { style:'color:var(--muted)' }, 'Синхронизация достижений появится позже.')
+    );
+
+    const wrap = el('div', { style:'display:flex;flex-direction:column;gap:12px' },
+      infoSection,
+      statsGrid,
+      achievementsBlock,
+      buildProfileNotes(profileResult)
+    );
+
+    setModalContent(wrap);
   });
 
   return {
@@ -133,53 +141,31 @@ function sanitize(s){ const d=document.createElement('div'); d.textContent=Strin
 function statCard(label, value){
   return el('div', { style:'border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center' },
     el('div', { style:'font-size:12px;color:var(--muted)' }, sanitize(label)),
-    el('div', { style:'font-weight:800;font-size:16px' }, String(value ?? 0))
+    el('div', { style:'font-weight:800;font-size:16px' }, sanitize(value ?? 0))
   );
 }
 
-function safeStatsSummary(){
-  const ss = (window.statsSystem && typeof window.statsSystem.getStatsSummary==='function')
-    ? window.statsSystem.getStatsSummary()
-    : null;
-
-  const s = ss || {};
-  return {
-    gamesPlayed: s.gamesPlayed ?? 0,
-    wins: s.currentStreak ? undefined : undefined, // не используем, ниже вычислим
-    winRate: s.winRate ?? 0,
-    averageMoves: s.averageMoves ?? s.averageMovesPerGame ?? 0,
-    draws: s.totalDraws ?? 0,
-    // поскольку statsSystem хранит только суммарно, попробуем реконструировать
-    // если нет прямых полей — возьмём из window.statsSystem.stats
-    ...(() => {
-      try {
-        const raw = window.statsSystem?.stats || {};
-        return {
-          wins: raw.gamesWon ?? 0,
-          losses: raw.gamesLost ?? 0,
-          draws: raw.gamesDrawn ?? (s.gamesDrawn ?? 0),
-        };
-      } catch { return { wins:0, losses:0, draws:0 }; }
-    })()
-  };
+function formatDate(value) {
+  try {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleString();
+  } catch {
+    return '';
+  }
 }
 
-function safeAchievements(){
-  const name = (window.me && window.me.name) ? window.me.name : 'Player';
-  const avatar = (window.me && window.me.avatar) ? window.me.avatar : '';
+function isNumericId(id){
+  return typeof id === 'string' ? /^[0-9]+$/.test(id) : Number.isFinite(id);
+}
 
-  let items = [];
-  try {
-    const a = window.achievementSystem;
-    if (a) {
-      // пробуем распространённые варианты API
-      if (typeof a.getUnlocked === 'function') items = a.getUnlocked().map(x => x.title || x.name || String(x));
-      else if (Array.isArray(a.unlocked)) items = a.unlocked.map(x => x.title || x.name || String(x));
-      else if (Array.isArray(a.list)) items = a.list.filter(x => x.unlocked).map(x => x.title || x.name || String(x));
-    }
-  } catch { items = []; }
-
-  // фолбэк: показываем минимум
-  if (!Array.isArray(items)) items = [];
-  return { name, avatar, items };
+function buildProfileNotes(serverResult){
+  if (!serverResult) return el('div', {});
+  if (serverResult.error) {
+    return el('div', { style:'color:var(--warn);font-size:12px' }, 'Не удалось загрузить статистику с сервера. Повторите попытку позже.');
+  }
+  if (!serverResult.profile && isNumericId(window.me?.id)) {
+    return el('div', { style:'color:var(--muted);font-size:12px' }, 'Сыграйте первую игру, чтобы увидеть статистику.');
+  }
+  return el('div', {});
 }

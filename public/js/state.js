@@ -1,16 +1,37 @@
-// public/js/state.js
-export const TG = (typeof window !== 'undefined' && window.Telegram && window.Telegram.WebApp)
-  ? window.Telegram.WebApp : null;
+let telegramApp = null;
+let telegramInitialized = false;
 
-if (TG) {
+function initTelegram(tg) {
+  if (!tg || telegramInitialized) return;
   try {
-    TG.expand(); TG.ready(); TG.enableClosingConfirmation();
-    TG.setHeaderColor(TG.colorScheme === 'dark' ? '#0f172a' : '#ffffff');
-    TG.setBackgroundColor(TG.colorScheme === 'dark' ? '#0b1220' : '#f8fafc');
+    tg.expand();
+    tg.ready();
+    tg.enableClosingConfirmation();
+    tg.setHeaderColor(tg.colorScheme === 'dark' ? '#0f172a' : '#ffffff');
+    tg.setBackgroundColor(tg.colorScheme === 'dark' ? '#0b1220' : '#f8fafc');
   } catch {}
+  telegramInitialized = true;
+}
+
+export function getTelegramWebApp() {
+  if (typeof window === 'undefined') return telegramApp;
+  const current = window.Telegram?.WebApp;
+  if (current) {
+    telegramApp = current;
+    initTelegram(current);
+  }
+  return telegramApp;
+}
+
+function getTelegramUser() {
+  return getTelegramWebApp()?.initDataUnsafe?.user || null;
 }
 
 const APP_NAME = 'TicTacToeTWA';
+
+getTelegramWebApp();
+
+const initialTelegramUser = getTelegramUser();
 
 function fullName(u) {
   if (!u) return 'Player';
@@ -21,8 +42,12 @@ function fullName(u) {
   return name || 'Player';
 }
 
+function cleanUsername(u){
+  return (u || '').trim().replace(/^@/, '').replace(/[^a-zA-Z0-9_]/g, '').slice(0, 32);
+}
+
 const uid = (() => {
-  const fromTG = TG?.initDataUnsafe?.user?.id;
+  const fromTG = initialTelegramUser?.id;
   if (fromTG) return String(fromTG);
   const key = `${APP_NAME}:uid:session`;
   let v = sessionStorage.getItem(key);
@@ -32,9 +57,14 @@ const uid = (() => {
 
 export const me = {
   id: uid,
-  name: fullName(TG?.initDataUnsafe?.user) || localStorage.getItem(`${APP_NAME}:name`) || 'Player',
-  avatar: TG?.initDataUnsafe?.user?.photo_url || localStorage.getItem(`${APP_NAME}:avatar`) || '',
+  name: fullName(initialTelegramUser) || localStorage.getItem(`${APP_NAME}:name`) || 'Player',
+  avatar: initialTelegramUser?.photo_url || localStorage.getItem(`${APP_NAME}:avatar`) || '',
+  username: cleanUsername(initialTelegramUser?.username || initialTelegramUser?.user_name || ''),
 };
+
+if (typeof window !== 'undefined') {
+  window.me = me;
+}
 
 try {
   localStorage.setItem(`${APP_NAME}:name`, me.name);
@@ -42,13 +72,21 @@ try {
 } catch {}
 
 export function refreshIdentity() {
-  const u = TG?.initDataUnsafe?.user;
+  const u = getTelegramUser();
+  const nextId = u?.id ? String(u.id) : null;
   const nextName = fullName(u);
   const nextAva  = u?.photo_url || me.avatar || '';
+  const nextUsername = cleanUsername(u?.username || u?.user_name || '');
   let changed = false;
 
+  if (nextId && nextId !== me.id) {
+    me.id = nextId;
+    changed = true;
+    try { sessionStorage.setItem(`${APP_NAME}:uid:session`, me.id); } catch {}
+  }
   if (nextName && nextName !== me.name) { me.name = nextName; changed = true; }
   if (nextAva  && nextAva  !== me.avatar) { me.avatar = nextAva; changed = true; }
+  if (nextUsername !== undefined && nextUsername !== me.username) { me.username = nextUsername; changed = true; }
 
   try {
     if (changed) {
@@ -88,6 +126,12 @@ export const LOSE_PHRASES = [
   "Хорошая попытка! Ещё немного — и победа будет ваша ✨",
   "Не сдавайтесь — следующий матч за вами 💥",
   "Сильная игра! Чуть-чуть не хватило, но всё впереди 🧠",
+];
+export const DRAW_PHRASES = [
+  "Отличный матч! Вы держались на равных 🤝",
+  "Крутая заруба — никто не уступил! ⚖️",
+  "Это была достойная ничья. До новой встречи! 🎲",
+  "Ни шагу назад! Равная борьба до конца 💫",
 ];
 export const pick = (arr) => arr[Math.floor(Math.random()*arr.length)];
 

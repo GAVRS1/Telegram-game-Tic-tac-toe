@@ -1,202 +1,170 @@
+import { me } from './state.js';
+
+function isNumericId(id) {
+  return typeof id === 'string' ? /^[0-9]+$/.test(id) : Number.isFinite(id);
+}
+
+function normalizeNumber(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
 export class StatsSystem {
   constructor() {
-    this.stats = {
-      gamesPlayed: 0,
-      gamesWon: 0,
-      gamesLost: 0,
-      gamesDrawn: 0,
-      totalMoves: 0,
-      fastestWin: null,
-      longestGame: null,
-      favoritePosition: {},
-      winStreak: 0,
-      bestWinStreak: 0,
-      totalPlayTime: 0,
-      lastGame: null
-    };
-    
+    this.serverProfile = null;
+    this.serverError = null;
+    this.lastServerSync = 0;
+    this.loadingServer = false;
+    this.serverSyncTimer = null;
+
     this.currentGame = {
       startTime: null,
       moves: 0,
-      positions: []
+      positions: [],
+      active: false,
     };
-    
-    this.loadStats();
+
+    this.queueServerSync(0);
   }
 
-  loadStats() {
+  queueServerSync(delay = 400) {
+    if (!isNumericId(me?.id)) return;
+    if (this.serverSyncTimer) clearTimeout(this.serverSyncTimer);
+    this.serverSyncTimer = setTimeout(() => {
+      this.serverSyncTimer = null;
+      this.ensureServerStats({ force: true }).catch(() => {});
+    }, Math.max(0, delay));
+  }
+
+  async ensureServerStats({ force = false } = {}) {
+    const id = me?.id;
+    if (!isNumericId(id)) {
+      this.serverProfile = null;
+      this.serverError = null;
+      return { profile: null, error: null };
+    }
+
+    const now = Date.now();
+    if (!force && this.loadingServer) {
+      return { profile: this.serverProfile, error: this.serverError };
+    }
+    if (!force && this.serverProfile && now - this.lastServerSync < 5000) {
+      return { profile: this.serverProfile, error: this.serverError };
+    }
+
+    this.loadingServer = true;
     try {
-      const saved = localStorage.getItem('tictactoe_stats');
-      if (saved) {
-        const data = JSON.parse(saved);
-        this.stats = { ...this.stats, ...data };
-      }
+      const response = await fetch(`/profile/${encodeURIComponent(id)}`, { cache: 'no-store' });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      const profile = data?.profile ?? null;
+      this.applyServerStats(profile);
+      this.serverError = null;
+      this.lastServerSync = Date.now();
+      return { profile, error: null };
     } catch (error) {
-      console.warn('Failed to load stats:', error);
+      this.serverError = error;
+      return { profile: this.serverProfile, error };
+    } finally {
+      this.loadingServer = false;
     }
   }
 
-  saveStats() {
-    try {
-      localStorage.setItem('tictactoe_stats', JSON.stringify(this.stats));
-    } catch (error) {
-      console.warn('Failed to save stats:', error);
-    }
+  applyServerStats(profile) {
+    this.serverProfile = profile || null;
   }
 
   startGame() {
     this.currentGame = {
       startTime: Date.now(),
       moves: 0,
-      positions: []
+      positions: [],
+      active: true,
     };
   }
 
   recordMove(position) {
-    this.currentGame.moves++;
-    this.currentGame.positions.push(position);
-    this.stats.totalMoves++;
-    
-    // Отслеживание любимой позиции
-    this.stats.favoritePosition[position] = 
-      (this.stats.favoritePosition[position] || 0) + 1;
+    if (!this.currentGame.active) return;
+    this.currentGame.moves += 1;
+    if (position !== undefined && position !== null) {
+      this.currentGame.positions.push(position);
+    }
   }
 
   endGame(result) {
-    const gameDuration = this.currentGame.startTime ? 
-      Date.now() - this.currentGame.startTime : 0;
-    
-    this.stats.gamesPlayed++;
-    this.stats.totalPlayTime += gameDuration;
-    this.stats.lastGame = {
-      result,
+    if (!this.currentGame.active) {
+      this.queueServerSync();
+      return;
+    }
+
+    const gameDuration = this.currentGame.startTime ? Date.now() - this.currentGame.startTime : 0;
+    const payload = {
       moves: this.currentGame.moves,
       duration: gameDuration,
-      timestamp: Date.now()
+      positions: this.currentGame.positions.slice(),
     };
 
-    switch (result) {
-      case 'win':
-        this.stats.gamesWon++;
-        this.stats.winStreak++;
-        this.stats.bestWinStreak = Math.max(
-          this.stats.bestWinStreak, 
-          this.stats.winStreak
-        );
-        
-        if (!this.stats.fastestWin || this.currentGame.moves < this.stats.fastestWin) {
-          this.stats.fastestWin = this.currentGame.moves;
-        }
-        break;
-        
-      case 'lose':
-        this.stats.gamesLost++;
-        this.stats.winStreak = 0;
-        break;
-        
-      case 'draw':
-        this.stats.gamesDrawn++;
-        this.stats.winStreak = 0;
-        break;
-    }
-
-    if (!this.stats.longestGame || gameDuration > this.stats.longestGame) {
-      this.stats.longestGame = gameDuration;
-    }
-
-    this.saveStats();
-    
-    // Обновить достижения
     if (window.achievementSystem) {
-      if (result === 'win') {
-        window.achievementSystem.onGameWon({
-          moves: this.currentGame.moves,
-          duration: gameDuration
-        });
-      } else if (result === 'lose') {
+      const normalized = result === 'loss' ? 'lose' : result;
+      if (normalized === 'win') {
+        window.achievementSystem.onGameWon(payload);
+      } else if (normalized === 'lose') {
         window.achievementSystem.onGameLost();
       }
     }
-  }
 
-  getWinRate() {
-    if (this.stats.gamesPlayed === 0) return 0;
-    return Math.round((this.stats.gamesWon / this.stats.gamesPlayed) * 100);
-  }
+    this.queueServerSync();
 
-  getAverageGameTime() {
-    if (this.stats.gamesPlayed === 0) return 0;
-    return Math.round(this.stats.totalPlayTime / this.stats.gamesPlayed);
-  }
-
-  getAverageMovesPerGame() {
-    if (this.stats.gamesPlayed === 0) return 0;
-    return Math.round(this.stats.totalMoves / this.stats.gamesPlayed);
-  }
-
-  getFavoritePosition() {
-    const positions = Object.entries(this.stats.favoritePosition);
-    if (positions.length === 0) return null;
-    
-    return positions.reduce((a, b) => 
-      this.stats.favoritePosition[a[0]] > this.stats.favoritePosition[b[0]] ? a : b
-    )[0];
-  }
-
-  getStatsSummary() {
-    return {
-      gamesPlayed: this.stats.gamesPlayed,
-      winRate: this.getWinRate(),
-      currentStreak: this.stats.winStreak,
-      bestStreak: this.stats.bestWinStreak,
-      averageGameTime: this.getAverageGameTime(),
-      averageMoves: this.getAverageMovesPerGame(),
-      favoritePosition: this.getFavoritePosition(),
-      fastestWin: this.stats.fastestWin,
-      totalPlayTime: this.stats.totalPlayTime
+    this.currentGame = {
+      startTime: null,
+      moves: 0,
+      positions: [],
+      active: false,
     };
   }
 
-  exportStats() {
-    return {
-      ...this.stats,
-      summary: this.getStatsSummary(),
-      exportedAt: new Date().toISOString()
-    };
-  }
-
-  importStats(data) {
-    try {
-      if (data && typeof data === 'object') {
-        this.stats = { ...this.stats, ...data };
-        this.saveStats();
-        return true;
-      }
-    } catch (error) {
-      console.warn('Failed to import stats:', error);
+  getSummary() {
+    const profile = this.serverProfile;
+    if (!profile) {
+      return {
+        gamesPlayed: 0,
+        wins: 0,
+        losses: 0,
+        draws: 0,
+        winRate: 0,
+      };
     }
-    return false;
+
+    const wins = normalizeNumber(profile.wins);
+    const losses = normalizeNumber(profile.losses);
+    const draws = normalizeNumber(profile.draws);
+    const gamesFromDb = normalizeNumber(profile.games_played);
+    const games = gamesFromDb > 0 ? gamesFromDb : wins + losses + draws;
+
+    let winRate = normalizeNumber(profile.win_rate);
+    if (!winRate && games > 0) {
+      winRate = Math.round((wins / games) * 100);
+    }
+
+    return {
+      gamesPlayed: games,
+      wins,
+      losses,
+      draws,
+      winRate,
+    };
+  }
+
+  async loadProfile({ force = false } = {}) {
+    const { profile, error } = await this.ensureServerStats({ force });
+    return { profile, summary: this.getSummary(), error };
   }
 
   reset() {
-    this.stats = {
-      gamesPlayed: 0,
-      gamesWon: 0,
-      gamesLost: 0,
-      gamesDrawn: 0,
-      totalMoves: 0,
-      fastestWin: null,
-      longestGame: null,
-      favoritePosition: {},
-      winStreak: 0,
-      bestWinStreak: 0,
-      totalPlayTime: 0,
-      lastGame: null
-    };
-    
-    this.saveStats();
+    this.serverProfile = null;
+    this.serverError = null;
+    this.lastServerSync = 0;
   }
 }
 
-// Создание глобального экземпляра
 export const statsSystem = new StatsSystem();
