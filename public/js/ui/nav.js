@@ -5,15 +5,15 @@ import { statsSystem } from '../stats.js';
 export function mountNav() {
   const nav = el('div', { class:'navbar navbar--lg' },
     el('button', { class:'navbtn', id:'tabRating' },
-      el('div', { class:'sym' }, el('img', { src:'img/leaderboard.png', alt:'Рейтинг', class:'icon' })),
+      el('div', { class:'sym' }, el('img', { src:'img/leaderboard.svg', alt:'Рейтинг', class:'icon' })),
       el('div', { class:'label' }, 'Рейтинг')
     ),
-    el('button', { class:'navbtn centerAction active', id:'tabGame' },
-      el('div', { class:'sym',  id:'centerSym' }, el('img', { src:'img/search.png', alt:'Действие', class:'icon-lg' })),
+    el('button', { class:'navbtn centerAction', id:'tabGame' },
+      el('div', { class:'sym',  id:'centerSym' }, el('img', { src:'img/search.svg', alt:'Действие', class:'icon-lg' })),
       el('div', { class:'label', id:'centerActionLabel' }, 'Найти соперника')
     ),
     el('button', { class:'navbtn', id:'tabProfile' },
-      el('div', { class:'sym' }, el('img', { src:'img/profile-info.png', alt:'Профиль', class:'icon' })),
+      el('div', { class:'sym' }, el('img', { src:'img/profile-info.svg', alt:'Профиль', class:'icon' })),
       el('div', { class:'label' }, 'Профиль')
     )
   );
@@ -23,16 +23,18 @@ export function mountNav() {
   const centerSymImg = $('#centerSym img', nav);
   const centerLabel = $('#centerActionLabel', nav);
 
-  let currentMode = 'find'; // 'find' | 'resign' | 'rematch'
+  let currentMode = 'find'; // 'find' | 'waiting' | 'resign' | 'rematch'
   let onAction = null;
 
   const ICONS = {
-    find:   'img/search.png',
-    resign: 'img/surrender.png',
-    rematch:'img/search.png',
+    find:   'img/search.svg',
+    waiting:'img/waiting.svg',
+    resign: 'img/surrender.svg',
+    rematch:'img/search.svg',
   };
   const LABELS = {
     find:   'Найти соперника',
+    waiting:'Поиск соперника…',
     resign: 'Сдаться',
     rematch:'Реванш',
   };
@@ -41,6 +43,8 @@ export function mountNav() {
     currentMode = mode;
     centerSymImg.src = ICONS[mode] || ICONS.find;
     centerLabel.textContent = LABELS[mode] || '';
+    tabGame.classList.toggle('is-waiting', mode === 'waiting');
+    tabGame.classList.toggle('active', mode === 'resign' || mode === 'rematch');
   }
 
   tabGame.addEventListener('click', () => onAction?.(currentMode));

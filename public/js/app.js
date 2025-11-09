@@ -21,6 +21,22 @@ const nav = mountNav();
 
 const pendingOpponentProfiles = new Set();
 
+function startQueueSearch({ notify = true, playSound = true } = {}) {
+  sendWs({ t: 'queue.join' });
+  nav.setMode('waiting');
+  UI.setStatus('Поиск соперника…', true);
+  if (notify) notificationSystem.info('Поиск соперника…');
+  if (playSound) audioManager.playClick();
+}
+
+function cancelQueueSearch({ notify = true, playSound = true } = {}) {
+  sendWs({ t: 'queue.leave' });
+  nav.setMode('find');
+  UI.setStatus('Готово');
+  if (notify) notificationSystem.info('Поиск остановлен');
+  if (playSound) audioManager.playClick();
+}
+
 function normalizeId(id) {
   if (id == null) return '';
   return String(id).trim();
@@ -79,9 +95,10 @@ async function ensureOpponentProfile() {
 // центральная кнопка: поиск/сдаться/реванш
 nav.onAction((mode) => {
   if (mode === 'find') {
-    sendWs({ t: 'queue.join' });
-    notificationSystem.info('Поиск соперника...');
-    audioManager.playClick();
+    startQueueSearch();
+  }
+  if (mode === 'waiting') {
+    cancelQueueSearch();
   }
   if (mode === 'resign') {
     if (Game.gameId) {
@@ -104,7 +121,7 @@ function buildResultContent(baseText, phrasesPool) {
 }
 
 function inviteLastOpponent() {
-  if (!Game.lastOpp?.id) { sendWs({ t: 'queue.join' }); return; }
+  if (!Game.lastOpp?.id) { startQueueSearch({ notify: false, playSound: false }); return; }
   UI.setStatus('Отправлено приглашение на реванш…', true);
   notificationSystem.info('Приглашение отправлено');
   sendWs({ t: 'rematch.offer', to: Game.lastOpp.id, prevGameId: Game.gameId || null });
@@ -334,12 +351,16 @@ openWs(
   () => {
     UI.setStatus('Отключено. Переподключение…', true);
     notificationSystem.error('Соединение потеряно');
+    nav.setMode('find');
   }
 );
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') hideModal();
-  if (e.key === ' ' && !Game.gameId) { e.preventDefault(); sendWs({ t: 'queue.join' }); }
+  if (e.key === ' ' && !Game.gameId) {
+    e.preventDefault();
+    startQueueSearch({ notify: true, playSound: false });
+  }
 });
 
 document.addEventListener('visibilitychange', () => {
