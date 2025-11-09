@@ -4,7 +4,7 @@ import { sendWs } from '../ws.js';
 import { statsSystem } from '../stats.js';
 import { achievementSystem } from '../achievements.js';
 
-let statusEl, youAva, youName, youMark, oppAva, oppName, oppMark, boardEl;
+let statusEl, youAva, youName, youUsername, youMark, oppAva, oppName, oppUsername, oppMark, boardEl;
 const cells = [];
 let lastMoveTs = 0;
 
@@ -23,20 +23,30 @@ function applyNames(){
   youName.setAttribute('aria-label', myName);
   youAva.src = me.avatar || 'img/logo.svg';
   youAva.alt = myName;
+  youUsername.textContent = myUsername;
+  youUsername.style.display = myUsername ? 'block' : 'none';
 
   let oppLabel = 'Оппонент';
   let oppAvaSrc = 'img/logo.svg';
-  let oppUsername = '';
+  let oppUsernameLabel = ''; 
   if (Game.opp && String(Game.opp.id) !== String(me.id)) {
-    oppLabel = (Game.opp.name && Game.opp.name.trim()) ? Game.opp.name : 'Оппонент';
+    const rawName = Game.opp.name && Game.opp.name.trim();
+    const rawUsername = Game.opp.username && Game.opp.username.trim();
+    oppUsernameLabel = rawUsername ? '@' + rawUsername.replace(/^@/, '') : '';
+    oppLabel = rawName || oppUsernameLabel || 'Оппонент';
     oppAvaSrc = Game.opp.avatar || 'img/logo.svg';
-    oppUsername = (Game.opp.username && Game.opp.username.trim()) ? '@' + Game.opp.username.replace(/^@/, '') : '';
   }
   oppName.textContent = oppLabel;
-  oppName.title = oppUsername ? `${oppLabel} (${oppUsername})` : oppLabel;
+  oppName.title = oppUsernameLabel && oppUsernameLabel !== oppLabel
+    ? `${oppLabel} (${oppUsernameLabel})`
+    : oppLabel;
   oppName.setAttribute('aria-label', oppLabel);
   oppAva.src = oppAvaSrc;
   oppAva.alt = oppLabel;
+  if (oppUsername) {
+    oppUsername.textContent = oppUsernameLabel;
+    oppUsername.style.display = oppUsernameLabel ? '' : 'none';
+  }
 
   youMark.textContent = Game.you || '—';
   oppMark.textContent = Game.you ? (Game.you === 'X' ? 'O' : 'X') : '—';
@@ -79,14 +89,20 @@ export function mountBoard(root){
         el('div', { class:'badge', id:'youBadge' },
           el('div', { class:'info' },
             el('img', { class:'ava', id:'youAva', src: me.avatar || 'img/logo.svg' }),
-            el('span', { class:'name', id:'youName' }, me.name || 'Вы')
+            el('div', { class:'text' },
+              el('span', { class:'name', id:'youName' }, me.name || 'Вы'),
+              el('span', { class:'username', id:'youUsername' })
+            )
           ),
           el('span', { class:'mark x', id:'youMark' }, '—')
         ),
         el('div', { class:'badge', id:'oppBadge' },
           el('div', { class:'info' },
             el('img', { class:'ava', id:'oppAva', src:'img/logo.svg' }),
-            el('span', { class:'name', id:'oppName' }, 'Оппонент')
+            el('div', { class:'text' },
+              el('span', { class:'name', id:'oppName' }, 'Оппонент'),
+              el('span', { class:'username', id:'oppUsername' })
+            )
           ),
           el('span', { class:'mark o', id:'oppMark' }, '—')
         )
@@ -123,8 +139,8 @@ export function mountBoard(root){
   document.head.appendChild(styleFix);
 
   statusEl = $('#status', wrap);
-  youAva = $('#youAva', wrap); youName = $('#youName', wrap); youMark = $('#youMark', wrap);
-  oppAva = $('#oppAva', wrap); oppName = $('#oppName', wrap); oppMark = $('#oppMark', wrap);
+  youAva = $('#youAva', wrap); youName = $('#youName', wrap); youUsername = $('#youUsername', wrap); youMark = $('#youMark', wrap);
+  oppAva = $('#oppAva', wrap); oppName = $('#oppName', wrap); oppUsername = $('#oppUsername', wrap); oppMark = $('#oppMark', wrap);
   boardEl = $('#board', wrap);
 
   for (let i=0;i<9;i++){

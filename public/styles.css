@@ -55,9 +55,16 @@ body{
 }
 .badge .info{display:flex;align-items:center;gap:10px;min-width:0}
 .badge .ava{width:28px;height:28px;border-radius:50%;object-fit:cover;border:1px solid var(--line);background:#0a0e1a}
+.badge .text{display:flex;flex-direction:column;gap:2px;min-width:0}
 .badge .name{
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   color:var(--text);opacity:.95;font-weight:600;
+}
+.badge .username{
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  color:var(--muted);
+  font-size:12px;
+  opacity:.85;
 }
 .mark{
   font-weight:800;letter-spacing:.5px;

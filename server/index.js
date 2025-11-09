@@ -153,7 +153,47 @@ const endGame = async (gameId, reason="end", winBy=null) => {
   games.delete(gameId);
 };
 
-const startGame = (uidA, uidB) => {
+async function buildOpponentPayload(uid) {
+  if (!uid) return null;
+
+  const ws = toWs(uid);
+  const local = ws ? userByWs.get(ws) : null;
+
+  let name = sanitizeString(local?.name || "");
+  let username = sanitizeUsername(local?.username || "");
+  let avatar = (local?.avatar || "").trim();
+
+  if ((!avatar || !username || !name) && isNumericId(uid)) {
+    try {
+      const profile = await getUserProfile(uid);
+      if (profile) {
+        if (!avatar && profile.avatar_url) avatar = String(profile.avatar_url);
+        if (!username && profile.username) username = sanitizeUsername(profile.username);
+        if (!name) name = sanitizeString(profile.username || "");
+      }
+    } catch (e) {
+      console.error("buildOpponentPayload error:", e);
+    }
+  }
+
+  const fallbackNameSource = name || (username ? `@${username}` : "Игрок");
+  const finalName = sanitizeString(fallbackNameSource) || "Игрок";
+
+  if (local) {
+    local.name = finalName;
+    local.username = username;
+    if (avatar) local.avatar = avatar;
+  }
+
+  return {
+    id: uid,
+    name: finalName,
+    username,
+    avatar,
+  };
+}
+
+const startGame = async (uidA, uidB) => {
   if (!uidA || !uidB || uidA === uidB) return;
 
   const gameId = "g_" + Date.now() + "_" + Math.random().toString(36).slice(2);
@@ -167,10 +207,13 @@ const startGame = (uidA, uidB) => {
   if (a) a.lastOpponent = uidB;
   if (b) b.lastOpponent = uidA;
 
-  const pick = (u) => u ? ({ id:u.id, name:u.name, username:u.username || '', avatar:u.avatar }) : null;
+  const [oppForX, oppForO] = await Promise.all([
+    buildOpponentPayload(O),
+    buildOpponentPayload(X),
+  ]);
 
-  send(toWs(X), { t:"game.start", gameId, you:"X", turn:"X", opp: pick(b) });
-  send(toWs(O), { t:"game.start", gameId, you:"O", turn:"X", opp: pick(a) });
+  send(toWs(X), { t:"game.start", gameId, you:"X", turn:"X", opp: oppForX });
+  send(toWs(O), { t:"game.start", gameId, you:"O", turn:"X", opp: oppForO });
 
   console.log(`[GAME] ${gameId}: ${a?.name||X} vs ${b?.name||O}`);
 };
@@ -253,7 +296,7 @@ const handlers = {
       const bId = userByWs.get(bWs)?.id;
       if (!bId || bId === aId) { queue.unshift(aWs); if (bWs) queue.push(bWs); continue; }
 
-      startGame(aId, bId);
+      startGame(aId, bId).catch((e) => console.error("startGame error:", e));
       break;
     }
   },
@@ -304,7 +347,7 @@ const handlers = {
     const me = userByWs.get(ws);
     if (!me?.lastOpponent) return;
     if (me.id === me.lastOpponent) return;
-    startGame(me.id, me.lastOpponent);
+    startGame(me.id, me.lastOpponent).catch((e) => console.error("startGame error:", e));
   },
 
   rematch_decline(ws) {

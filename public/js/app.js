@@ -21,6 +21,63 @@ mountBoard(appRoot);
 
 const nav = mountNav();
 
+const pendingOpponentProfiles = new Set();
+
+function normalizeId(id) {
+  if (id == null) return '';
+  return String(id).trim();
+}
+
+function isNumericId(id) {
+  return /^[0-9]+$/.test(id);
+}
+
+function needsOpponentDetails(opp) {
+  if (!opp) return false;
+  const hasAvatar = typeof opp.avatar === 'string' && opp.avatar.trim() !== '';
+  const hasUsername = typeof opp.username === 'string' && opp.username.trim() !== '';
+  return !hasAvatar || !hasUsername;
+}
+
+async function ensureOpponentProfile() {
+  const opp = Game.opp;
+  if (!opp || !opp.id) return;
+
+  const id = normalizeId(opp.id);
+  if (!isNumericId(id)) return;
+  if (!needsOpponentDetails(opp)) return;
+  if (pendingOpponentProfiles.has(id)) return;
+
+  pendingOpponentProfiles.add(id);
+  try {
+    const response = await fetch(`/profile/${encodeURIComponent(id)}`, { cache: 'no-store' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const data = await response.json();
+    const profile = data?.profile || null;
+    if (!profile) return;
+    if (!Game.opp || normalizeId(Game.opp.id) !== id) return;
+
+    const avatar = typeof profile.avatar_url === 'string' ? profile.avatar_url.trim() : '';
+    const usernameRaw = typeof profile.username === 'string' ? profile.username.trim() : '';
+    const username = usernameRaw.replace(/^@/, '');
+
+    const updatedOpp = {
+      ...Game.opp,
+      avatar: avatar || Game.opp.avatar || '',
+      username: username || Game.opp.username || '',
+    };
+
+    Game.opp = updatedOpp;
+    Game.lastOpp = { ...updatedOpp };
+    UI.applyNames();
+  } catch (error) {
+    console.warn('Не удалось загрузить профиль соперника', error);
+  } finally {
+    pendingOpponentProfiles.delete(id);
+  }
+}
+
 // центральная кнопка: поиск/сдаться/реванш
 nav.onAction((mode) => {
   if (mode === 'find') {
@@ -83,17 +140,26 @@ openWs(
       Game.you = msg.you;
       Game.turn = msg.turn || 'X';
 
-      const incomingOpp = msg.opp || null;
+      const rawOpp = (msg.opp && typeof msg.opp === 'object') ? msg.opp : null;
+      const incomingOpp = rawOpp ? {
+        id: rawOpp.id,
+        name: typeof rawOpp.name === 'string' ? rawOpp.name.trim() : '',
+        username: typeof rawOpp.username === 'string' ? rawOpp.username.trim() : '',
+        avatar: typeof rawOpp.avatar === 'string' ? rawOpp.avatar.trim() : '',
+      } : null;
+
       Game.opp = (incomingOpp && String(incomingOpp.id) === String(me.id)) ? null : incomingOpp;
       // фикс: всегда обновляем lastOpp при старте игры
       Game.lastOpp = Game.opp ? { ...Game.opp } : Game.lastOpp;
-
+      
+      UI.applyNames();
       Game.resetBoard();
       clearHighlights();
 
       hideModal();
       UI.setStatus(Game.myMoveAllowed() ? 'Ваш ход' : 'Ход оппонента');
       UI.renderBoard();
+      ensureOpponentProfile();
       nav.setMode('resign');
 
       notificationSystem.success('Игра началась!');
