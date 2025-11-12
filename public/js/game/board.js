@@ -12,7 +12,7 @@ function setStatus(text, blink=false){
   statusEl.classList.toggle('blink', !!blink);
 }
 
-function setTurnBar(_yourTurn){ /* no-op */ }
+function setTurnBar(_yourTurn){ }
 
 function applyNames(){
   const myName = (me.name && me.name.trim()) ? me.name : 'Вы';
@@ -80,35 +80,34 @@ function onCellClick(i){
 }
 
 export function mountBoard(root){
-  const wrap = el('div', { class:'wrap' },
-    el('div', { class:'card' },
-      el('div', { class:'badges' },
-        el('div', { class:'badge', id:'youBadge' },
-          el('div', { class:'info' },
-            el('img', { class:'ava', id:'youAva', src: me.avatar || 'img/logo.svg' }),
-            el('div', { class:'text' },
-              el('span', { class:'name', id:'youName' }, me.name || 'Вы'),
-              el('span', { class:'username', id:'youUsername' })
-            )
-          ),
-          el('span', { class:'mark x', id:'youMark' }, '—')
+  const TG = getTelegramWebApp();
+
+  const card = el('div', { class:'card' },
+    el('div', { class:'badges' },
+      el('div', { class:'badge', id:'youBadge' },
+        el('div', { class:'info' },
+          el('img', { class:'ava', id:'youAva', src: me.avatar || 'img/logo.svg' }),
+          el('div', { class:'text' },
+            el('span', { class:'name', id:'youName' }, me.name || 'Вы'),
+            el('span', { class:'username', id:'youUsername' })
+          )
         ),
-        el('div', { class:'badge', id:'oppBadge' },
-          el('div', { class:'info' },
-            el('img', { class:'ava', id:'oppAva', src:'img/logo.svg' }),
-            el('div', { class:'text' },
-              el('span', { class:'name', id:'oppName' }, 'Оппонент'),
-              el('span', { class:'username', id:'oppUsername' })
-            )
-          ),
-          el('span', { class:'mark o', id:'oppMark' }, '—')
-        )
+        el('span', { class:'mark x', id:'youMark' }, '—')
       ),
-      el('div', { class:'status-line', id:'status' }, 'Готово'),
-      el('div', { class:'board', id:'board' })
-    )
+      el('div', { class:'badge', id:'oppBadge' },
+        el('div', { class:'info' },
+          el('img', { class:'ava', id:'oppAva', src:'img/logo.svg' }),
+          el('div', { class:'text' },
+            el('span', { class:'name', id:'oppName' }, 'Оппонент'),
+            el('span', { class:'username', id:'oppUsername' })
+          )
+        ),
+        el('span', { class:'mark o', id:'oppMark' }, '—')
+      )
+    ),
+    el('div', { class:'status-line', id:'status' }, 'Готово'),
+    el('div', { class:'board', id:'board' })
   );
-  root.appendChild(wrap);
 
   const authorBadge = el('button', { class:'author-badge', type:'button', title:'Автор 0xGavrs' },
     el('img', { src:'https://t.me/i/userpic/320/rsgavrs.jpg', alt:'0xGavrs', loading:'lazy' }),
@@ -126,12 +125,17 @@ export function mountBoard(root){
       window.open(link, '_blank', 'noopener');
     }
   }, { passive:true });
-  wrap.appendChild(authorBadge);
+
+  const wrap = el('div', { class:'wrap' },
+    authorBadge,
+    card
+  );
+  root.appendChild(wrap);
 
   const styleFix = document.createElement('style');
   styleFix.textContent = `
     .badge .name{display:inline-block!important;opacity:1!important;}
-    .status-line{margin:10px 0 6px; text-align:center; font-weight:600; opacity:.9;}
+    .status-line{margin:6px 0 4px; text-align:center; font-weight:600; opacity:.9;}
   `;
   document.head.appendChild(styleFix);
 

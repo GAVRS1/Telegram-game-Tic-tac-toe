@@ -102,7 +102,7 @@ function isNumericId(id) {
 export async function upsertUser({ id, username, avatar_url }) {
   const p = getPool();
   if (!p) return;
-  if (!isNumericId(id)) return; // пишем только TG uid
+  if (!isNumericId(id)) return;
 
   const n = Number(id);
   await p.query(
@@ -183,7 +183,7 @@ export async function getUserProfile(id) {
   const { rows } = await p.query(
     `
     SELECT id, username, avatar_url, games_played, wins, losses, draws,
-           created_at, updated_at,
+          created_at, updated_at,
            CASE WHEN games_played > 0 THEN ROUND((wins::decimal / games_played) * 100) ELSE 0 END AS win_rate
     FROM users
     WHERE id = $1;

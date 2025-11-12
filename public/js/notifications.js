@@ -92,7 +92,6 @@ export class NotificationSystem {
     return div.innerHTML;
   }
 
-  // Утилиты для разных типов уведомлений
   success(message, duration) {
     return this.show(message, 'success', duration);
   }
@@ -110,5 +109,4 @@ export class NotificationSystem {
   }
 }
 
-// Создание глобального экземпляра
 export const notificationSystem = new NotificationSystem();

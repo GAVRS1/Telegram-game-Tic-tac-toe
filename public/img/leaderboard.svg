@@ -1,19 +1,19 @@
 <svg width="48" height="48" viewBox="0 0 24 24" fill="none"
-     xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Топ / Лидеры">
-  <title>Топ / Лидеры</title>
+     xmlns="http://www.w3.org/2000/svg" role="img" aria-label="РўРѕРї / Р›РёРґРµСЂС‹">
+  <title>РўРѕРї / Р›РёРґРµСЂС‹</title>
 
-  <!-- Трибуна -->
-  <!-- Левая колонна -->
+  <!-- РўСЂРёР±СѓРЅР° -->
+  <!-- Р›РµРІР°СЏ РєРѕР»РѕРЅРЅР° -->
   <rect x="4.5" y="11.5" width="4" height="7" rx="0.8"
         stroke="#00BFFF" stroke-width="1.5" stroke-linejoin="round"/>
-  <!-- Центральная колонна -->
+  <!-- Р¦РµРЅС‚СЂР°Р»СЊРЅР°СЏ РєРѕР»РѕРЅРЅР° -->
   <rect x="10" y="8" width="4" height="10.5" rx="0.8"
         stroke="#00BFFF" stroke-width="1.5" stroke-linejoin="round"/>
-  <!-- Правая колонна -->
+  <!-- РџСЂР°РІР°СЏ РєРѕР»РѕРЅРЅР° -->
   <rect x="15.5" y="11.5" width="4" height="7" rx="0.8"
         stroke="#00BFFF" stroke-width="1.5" stroke-linejoin="round"/>
 
-  <!-- Звезда (поднята выше, полностью отделена от синего) -->
+  <!-- Р—РІРµР·РґР° (РїРѕРґРЅСЏС‚Р° РІС‹С€Рµ, РїРѕР»РЅРѕСЃС‚СЊСЋ РѕС‚РґРµР»РµРЅР° РѕС‚ СЃРёРЅРµРіРѕ) -->
   <path d="M12 1.8
            L12.7 3.4
            L14.4 3.6

@@ -1,8 +1,8 @@
 <svg width="48" height="48" viewBox="0 0 24 24" fill="none"
-     xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Подбор соперника">
-  <title>Подбор соперника</title>
+     xmlns="http://www.w3.org/2000/svg" role="img" aria-label="РџРѕРґР±РѕСЂ СЃРѕРїРµСЂРЅРёРєР°">
+  <title>РџРѕРґР±РѕСЂ СЃРѕРїРµСЂРЅРёРєР°</title>
 
-  <!-- Сетка крестиков-ноликов -->
+  <!-- РЎРµС‚РєР° РєСЂРµСЃС‚РёРєРѕРІ-РЅРѕР»РёРєРѕРІ -->
   <line x1="5"    y1="8.5" x2="8.4"  y2="8.5"  stroke="#00BFFF" stroke-width="1.5" stroke-linecap="round"/>
   <line x1="15.6" y1="8.5" x2="19"   y2="8.5"  stroke="#00BFFF" stroke-width="1.5" stroke-linecap="round"/>
   <line x1="5"    y1="15.5" x2="8.4" y2="15.5" stroke="#00BFFF" stroke-width="1.5" stroke-linecap="round"/>
@@ -12,11 +12,11 @@
   <line x1="15.5" y1="5"   x2="15.5" y2="8.4"  stroke="#00BFFF" stroke-width="1.5" stroke-linecap="round"/>
   <line x1="15.5" y1="15.6" x2="15.5" y2="19"  stroke="#00BFFF" stroke-width="1.5" stroke-linecap="round"/>
 
-  <!-- Лупа -->
+  <!-- Р›СѓРїР° -->
   <circle cx="12" cy="12" r="2.6"
           stroke="#FFFFFF" stroke-width="1.6"
           stroke-linecap="round" stroke-linejoin="round"/>
-  <!-- Ручка начинается ровно от внешнего края круга -->
+  <!-- Р СѓС‡РєР° РЅР°С‡РёРЅР°РµС‚СЃСЏ СЂРѕРІРЅРѕ РѕС‚ РІРЅРµС€РЅРµРіРѕ РєСЂР°СЏ РєСЂСѓРіР° -->
   <line x1="14" y1="14" x2="17.8" y2="17.8"
         stroke="#FFFFFF" stroke-width="1.6" stroke-linecap="round"/>
 

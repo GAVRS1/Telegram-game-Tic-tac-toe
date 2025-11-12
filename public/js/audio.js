@@ -7,7 +7,6 @@ export class AudioManager {
   }
 
   loadSounds() {
-    // Загрузка звуков в формате base64 или URL
     this.sounds.set('move', this.createAudioContext('move'));
     this.sounds.set('win', this.createAudioContext('win'));
     this.sounds.set('lose', this.createAudioContext('lose'));
@@ -71,7 +70,6 @@ export class AudioManager {
     return this.enabled;
   }
 
-  // Утилиты для разных событий
   playMove() {
     this.play('move', 150);
   }
@@ -99,5 +97,4 @@ export class AudioManager {
   }
 }
 
-// Создание глобального экземпляра
 export const audioManager = new AudioManager();

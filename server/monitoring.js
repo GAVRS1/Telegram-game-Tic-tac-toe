@@ -22,7 +22,6 @@ export function resetMetrics() {
   });
 }
 
-// Middleware для логирования
 export function loggingMiddleware(req, res, next) {
   const start = Date.now();
   

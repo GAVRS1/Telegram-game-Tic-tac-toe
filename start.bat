@@ -2,7 +2,7 @@
 REM Переходим в папку, где лежит .bat (и проект)
 cd /d "%~dp0"
 
-echo Starting Sync...
+echo Starting Server...
 REM Запуск скрипта
 node server\index.js
 

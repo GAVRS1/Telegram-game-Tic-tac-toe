@@ -1,5 +1,5 @@
 const requestCounts = new Map();
-const WINDOW_MS = 60000; // 1 минута
+const WINDOW_MS = 60000;
 const MAX_REQUESTS = 100;
 
 export function checkRateLimit(ip) {
@@ -34,7 +34,7 @@ export function checkRateLimit(ip) {
 
 export function getClientIP(req) {
   return req.headers['x-forwarded-for'] || 
-         req.headers['x-real-ip'] || 
-         req.connection.remoteAddress || 
-         'unknown';
+  req.headers['x-real-ip'] || 
+  req.connection.remoteAddress || 
+  'unknown';
 }

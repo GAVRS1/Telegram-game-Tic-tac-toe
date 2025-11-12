@@ -4,35 +4,33 @@ import { statsSystem } from '../stats.js';
 
 export function mountNav() {
   const nav = el('div', { class:'navbar navbar--lg' },
-    el('button', { class:'navbtn', id:'tabRating' },
-      el('div', { class:'sym' }, el('img', { src:'img/leaderboard.png', alt:'Рейтинг', class:'icon' })),
-      el('div', { class:'label' }, 'Рейтинг')
+    el('button', { class:'navbtn', id:'tabRating', 'aria-label':'Рейтинг', title:'Рейтинг' },
+      el('div', { class:'sym' }, el('img', { src:'img/leaderboard.svg', alt:'Рейтинг', class:'icon' }))
     ),
-    el('button', { class:'navbtn centerAction active', id:'tabGame' },
-      el('div', { class:'sym',  id:'centerSym' }, el('img', { src:'img/search.png', alt:'Действие', class:'icon-lg' })),
-      el('div', { class:'label', id:'centerActionLabel' }, 'Найти соперника')
+    el('button', { class:'navbtn centerAction', id:'tabGame', 'aria-label':'Найти соперника', title:'Найти соперника' },
+      el('div', { class:'sym',  id:'centerSym' }, el('img', { src:'img/search.svg', alt:'Действие', class:'icon-lg' }))
     ),
-    el('button', { class:'navbtn', id:'tabProfile' },
-      el('div', { class:'sym' }, el('img', { src:'img/profile-info.png', alt:'Профиль', class:'icon' })),
-      el('div', { class:'label' }, 'Профиль')
+    el('button', { class:'navbtn', id:'tabProfile', 'aria-label':'Профиль', title:'Профиль' },
+      el('div', { class:'sym' }, el('img', { src:'img/profile-info.svg', alt:'Профиль', class:'icon' }))
     )
   );
   (document.getElementById('navbar') || document.body).appendChild(nav);
 
   const tabGame = $('#tabGame', nav);
   const centerSymImg = $('#centerSym img', nav);
-  const centerLabel = $('#centerActionLabel', nav);
 
-  let currentMode = 'find'; // 'find' | 'resign' | 'rematch'
+  let currentMode = 'find';
   let onAction = null;
 
   const ICONS = {
-    find:   'img/search.png',
-    resign: 'img/surrender.png',
-    rematch:'img/search.png',
+    find:   '/img/search.svg',
+    waiting:'/img/waiting.svg',
+    resign: '/img/surrender.svg',
+    rematch:'/img/search.svg',
   };
   const LABELS = {
-    find:   'Найти соперника',
+    find:   'Найти',
+    waiting:'Поиск',
     resign: 'Сдаться',
     rematch:'Реванш',
   };
@@ -40,7 +38,11 @@ export function mountNav() {
   function setMode(mode) {
     currentMode = mode;
     centerSymImg.src = ICONS[mode] || ICONS.find;
-    centerLabel.textContent = LABELS[mode] || '';
+    const label = LABELS[mode] || 'Действие';
+    tabGame.setAttribute('aria-label', label);
+    tabGame.title = label;
+    tabGame.classList.toggle('is-waiting', mode === 'waiting');
+    tabGame.classList.toggle('active', mode === 'resign' || mode === 'rematch');
   }
 
   tabGame.addEventListener('click', () => onAction?.(currentMode));
@@ -130,8 +132,6 @@ export function mountNav() {
     onAction(cb){ onAction = cb; },
   };
 }
-
-// helpers
 
 function sanitize(s){ const d=document.createElement('div'); d.textContent=String(s??''); return d.textContent; }
 

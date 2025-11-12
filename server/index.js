@@ -21,10 +21,7 @@ const BOT_TOKEN = process.env.BOT_TOKEN || "";
 const SKIP_BOT = process.env.SKIP_BOT === "1";
 const PUBLIC_URL = (process.env.PUBLIC_URL || "").trim();
 
-// -------- HTTP (Express)
 const app = express();
-// We only trust the first proxy (e.g. Cloudflare) instead of all proxies to
-// prevent express-rate-limit from rejecting the configuration as insecure.
 app.set("trust proxy", 1);
 const PUBLIC_DIR = path.resolve(__dirname, "..", "public");
 
@@ -89,14 +86,11 @@ app.get("*", (req, res, next) => {
 
 const server = http.createServer(app);
 
-// -------- WS (игра)
 const wss = new WebSocketServer({ server });
 
-// uid -> ws ; ws -> { id,name,username,avatar,lastOpponent,isVerified }
 const wsByUid = new Map();
 const userByWs = new Map();
 
-// gameId -> { X:uid, O:uid, board[9], turn }
 const games = new Map();
 const queue = [];
 
@@ -269,10 +263,8 @@ const handlers = {
       isVerified: profile.isVerified,
     });
 
-    // лог для отладки отображения имён/аватаров
     console.log(`[HELLO] uid=${uid} name="${profile.name}" verified=${profile.isVerified} src=${profile.source}`);
 
-    // апдейт БД только для TG uid
     try {
       await ensureSchema();
       if (/^[0-9]+$/.test(uid)) {
@@ -395,14 +387,10 @@ wss.on("connection", (ws) => {
   });
 });
 
-// -------- Telegram Bot
 if (!SKIP_BOT && BOT_TOKEN) {
   const bot = new Telegraf(BOT_TOKEN);
   bot.start((ctx) => ctx.reply("🎮 Tic-Tac-Toe", {
-    reply_markup: {
-      keyboard: [[{ text:"🎯 Открыть игру", web_app:{ url: PUBLIC_URL || `http://localhost:${PORT}` } }]],
-      resize_keyboard:true, one_time_keyboard:true
-    }
+    reply_markup: { remove_keyboard: true }
   }));
   bot.launch();
   console.log("🤖 Bot started");
