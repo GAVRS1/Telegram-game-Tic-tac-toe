@@ -1,11 +1,13 @@
 @echo off
-REM Переходим в папку, где лежит .bat (и проект)
 cd /d "%~dp0"
 
-echo Starting Server...
-REM Запуск скрипта
-node server\index.js
+if exist .venv\Scripts\activate.bat (
+  call .venv\Scripts\activate.bat
+)
+
+echo Starting FastAPI server...
+python -m pyserver
 
 echo.
-echo Node process exited with code %ERRORLEVEL%.
+echo Python process exited with code %ERRORLEVEL%.
 pause
