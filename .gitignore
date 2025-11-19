@@ -1,8 +1,10 @@
-echo ".env
-node_modules
+.env
 .env.*
+node_modules
+__pycache__/
 *.log
-dist
+dist/
 *.sqlite
 *.db
-" > .gitignore
+.pytest_cache/
+.venv/
