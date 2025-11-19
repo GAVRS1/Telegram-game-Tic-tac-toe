@@ -40,10 +40,13 @@ async def get_pool() -> Optional[asyncpg.Pool]:
             pool_config.update(
                 host=settings.pg_host,
                 port=settings.pg_port,
-                user=settings.pg_user or None,
-                password=settings.pg_password or None,
-                database=settings.pg_database or None,
             )
+            if settings.pg_user:
+                pool_config["user"] = settings.pg_user
+            if settings.pg_password:
+                pool_config["password"] = settings.pg_password
+            if settings.pg_database:
+                pool_config["database"] = settings.pg_database
 
         ssl_value = (settings.pg_ssl or "").strip().lower()
         if ssl_value in {"1", "true", "require"}:

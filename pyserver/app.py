@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Dict
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 try:
     from dotenv import load_dotenv
@@ -78,10 +79,30 @@ def create_app() -> FastAPI:
     async def websocket_endpoint(websocket: WebSocket) -> None:
         await matchmaking.handle(websocket)
 
-    public_dir = settings.public_dir
+    public_dir = settings.public_dir.resolve()
     if not public_dir.exists():
         raise RuntimeError(f"Public directory not found: {public_dir}")
-    app.mount("/", StaticFiles(directory=str(public_dir), html=True), name="public")
+
+    index_file = public_dir / "index.html"
+    if not index_file.exists():
+        raise RuntimeError("public/ directory must contain index.html")
+
+    def _resolve_public_path(request_path: str) -> Path:
+        target = (public_dir / request_path).resolve()
+        try:
+            target.relative_to(public_dir)
+        except ValueError:
+            raise HTTPException(status_code=404, detail="Not found")
+        if target.is_dir():
+            target = target / "index.html"
+        if target.exists():
+            return target
+        return index_file
+
+    @app.get("/", response_class=FileResponse)
+    @app.get("/{request_path:path}", response_class=FileResponse)
+    async def serve_public(request_path: str = "") -> FileResponse:
+        return FileResponse(_resolve_public_path(request_path))
 
     return app
 
