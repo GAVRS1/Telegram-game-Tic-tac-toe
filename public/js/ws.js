@@ -22,10 +22,6 @@ export async function openWs(onOpen, onMessage, onClose){
 
       socket.addEventListener('message',(e)=> {
         let msg; try { msg = JSON.parse(e.data); } catch { return; }
-        if (msg && msg.t === 'heartbeat') {
-          try { socket.send(JSON.stringify({ t: 'heartbeat.ack' })); } catch {}
-          return;
-        }
         onMessage?.(msg);
       });
 
