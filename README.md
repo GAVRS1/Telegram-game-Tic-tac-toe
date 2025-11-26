@@ -60,7 +60,7 @@
 ## QR-код бота
 QR ведёт прямо к игровому боту в Telegram. Размер уменьшен для удобного отображения:
 
-<p><img src="QRcode.jpg" alt="QR-код бота" width="180"></p>
+<img src="QRcode.jpg" alt="QR-код бота" width="180">
 
 ## Лицензия
 MIT — см. файл `LICENSE`.
