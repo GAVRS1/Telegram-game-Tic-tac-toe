@@ -35,7 +35,7 @@
 ├── migrations/          # SQL-миграции для схемы БД
 ├── package.json         # Скрипты и зависимости
 ├── package-lock.json
-├── QRcode.jpg           # QR-код для быстрого перехода в бота
+├── QRcode.jpg  
 └── README.md
 ```
 
@@ -55,12 +55,12 @@
    - `PUBLIC_URL` — внешний URL для Web App (если отличается от локального);
    - параметры подключения к PostgreSQL (`DATABASE_URL` или `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`, `PGSSL`).
 3. Примените миграции: `npm run migrate` (создаст таблицы для пользователей, статистики и достижений).
-4. Запустите сервер: `npm run start` (или `npm run dev` с `nodemon`). Статика будет по `http://localhost:8080`, WebSocket — на том же хосте.
+4. Запустите сервер: `npm run start` (start.bat). Статика будет по `http://localhost:8080`, WebSocket — на том же хосте.
 
 ## QR-код бота
 QR ведёт прямо к игровому боту в Telegram. Размер уменьшен для удобного отображения:
 
-<img src="QRcode.jpg" alt="QR-код бота" width="180">
+![QR-код бота](QRcode.jpg)
 
 ## Лицензия
 MIT — см. файл `LICENSE`.
