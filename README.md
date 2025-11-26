@@ -44,7 +44,7 @@
 - Express, Helmet, CORS
 - WebSocket (ws)
 - PostgreSQL (pg)
-- Telegraf (бот для выдачи Web App)
+- Telegram (бот для выдачи Web App)
 - Vanilla JS + Telegram Web App SDK
 
 ## Как запустить локально
