@@ -115,6 +115,7 @@ export default function App() {
   const [game, setGame] = useState(initialGameState);
   const [status, setStatus] = useState({ text: "Готово", blink: false });
   const [navMode, setNavMode] = useState("find");
+  const [onlineStats, setOnlineStats] = useState({ total: 0, verified: 0, guest: 0 });
   const [modalState, setModalState] = useState({
     open: false,
     title: "",
@@ -626,6 +627,18 @@ export default function App() {
         return;
       }
 
+      if (msg.t === "online.stats") {
+        const total = Number(msg.total ?? 0);
+        const verified = Number(msg.verified ?? 0);
+        const guest = Number(msg.guest ?? 0);
+        setOnlineStats({
+          total: Number.isFinite(total) ? total : 0,
+          verified: Number.isFinite(verified) ? verified : 0,
+          guest: Number.isFinite(guest) ? guest : 0,
+        });
+        return;
+      }
+
       if (msg.t === "game.state") {
         if (Array.isArray(msg.board)) {
           setGame((prev) => ({ ...prev, board: msg.board.slice() }));
@@ -948,7 +961,13 @@ export default function App() {
         onCellClick={handleCellClick}
         onAuthorClick={handleAuthorClick}
       />
-      <Nav mode={navMode} onAction={onNavAction} onRating={loadRating} onProfile={loadProfile} />
+      <Nav
+        mode={navMode}
+        onAction={onNavAction}
+        onRating={loadRating}
+        onProfile={loadProfile}
+        onlineStats={onlineStats}
+      />
       <Modal
         open={modalState.open}
         title={modalState.title}
