@@ -89,6 +89,19 @@ export async function ensureSchema() {
   await p.query(`ALTER TABLE user_achievements ADD COLUMN IF NOT EXISTS progress_percent NUMERIC NOT NULL DEFAULT 0;`);
   await p.query(`ALTER TABLE user_achievements ADD COLUMN IF NOT EXISTS unlocked BOOLEAN NOT NULL DEFAULT false;`);
   await p.query(`ALTER TABLE user_achievements ADD COLUMN IF NOT EXISTS unlocked_at TIMESTAMPTZ;`);
+  await p.query(`
+    CREATE TABLE IF NOT EXISTS invites (
+      code          TEXT PRIMARY KEY,
+      host_user_id  TEXT NOT NULL,
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      expires_at    TIMESTAMPTZ NOT NULL,
+      status        TEXT NOT NULL DEFAULT 'pending',
+      guest_user_id TEXT
+    );
+  `);
+  await p.query(`CREATE INDEX IF NOT EXISTS idx_invites_status ON invites (status);`);
+  await p.query(`CREATE INDEX IF NOT EXISTS idx_invites_host ON invites (host_user_id);`);
+  await p.query(`CREATE INDEX IF NOT EXISTS idx_invites_expires ON invites (expires_at);`);
   await ensureAchievementDefinitions(p);
   return true;
 }
@@ -206,6 +219,62 @@ export async function getUserProfile(id) {
   }
 
   return profile;
+}
+
+export async function createInvite({ code, hostUserId, expiresAt }) {
+  const p = getPool();
+  if (!p) return null;
+  const { rows } = await p.query(
+    `
+    INSERT INTO invites (code, host_user_id, expires_at)
+    VALUES ($1, $2, $3)
+    ON CONFLICT (code) DO NOTHING
+    RETURNING *;
+  `,
+    [code, String(hostUserId), expiresAt]
+  );
+  return rows[0] || null;
+}
+
+export async function getInvite(code) {
+  const p = getPool();
+  if (!p) return null;
+  const { rows } = await p.query(`SELECT * FROM invites WHERE code = $1;`, [code]);
+  return rows[0] || null;
+}
+
+export async function acceptInvite({ code, guestUserId }) {
+  const p = getPool();
+  if (!p) return null;
+  const { rows } = await p.query(
+    `
+    UPDATE invites
+       SET status = 'accepted',
+           guest_user_id = $2
+     WHERE code = $1
+       AND status = 'pending'
+       AND expires_at > NOW()
+    RETURNING *;
+  `,
+    [code, String(guestUserId)]
+  );
+  return rows[0] || null;
+}
+
+export async function expireInvite(code) {
+  const p = getPool();
+  if (!p) return null;
+  const { rows } = await p.query(
+    `
+    UPDATE invites
+       SET status = 'expired'
+     WHERE code = $1
+       AND status = 'pending'
+    RETURNING *;
+  `,
+    [code]
+  );
+  return rows[0] || null;
 }
 
 async function ensureAchievementDefinitions(p) {
