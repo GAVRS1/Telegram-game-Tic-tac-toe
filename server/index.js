@@ -23,7 +23,7 @@ const PUBLIC_URL = (process.env.PUBLIC_URL || "").trim();
 
 const app = express();
 app.set("trust proxy", 1);
-const PUBLIC_DIR = path.resolve(__dirname, "..", "public");
+const PUBLIC_DIR = path.resolve(__dirname, "..", "client", "dist");
 
 app.use(helmet({
   contentSecurityPolicy: {
@@ -44,8 +44,6 @@ app.use(loggingMiddleware);
 app.use(rateLimit({ windowMs: 60_000, max: 300 }));
 
 app.use((req, _res, next) => { console.log(`[HTTP] ${req.method} ${req.url}`); next(); });
-app.use(express.static(PUBLIC_DIR));
-
 app.get("/config.json", (req, res) => {
   const proto = req.headers["x-forwarded-proto"] || req.protocol || "http";
   const host  = req.headers["x-forwarded-host"]  || req.headers.host || `localhost:${PORT}`;
@@ -54,6 +52,8 @@ app.get("/config.json", (req, res) => {
   const wsUrl     = (PUBLIC_URL || origin).replace(/^http/, "ws");
   res.json({ webAppUrl, wsUrl });
 });
+
+app.use(express.static(PUBLIC_DIR));
 
 app.get("/leaders", async (_req, res) => {
   try {
