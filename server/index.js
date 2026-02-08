@@ -92,7 +92,12 @@ const wsByUid = new Map();
 const userByWs = new Map();
 
 const games = new Map();
-const queue = [];
+const queueByUid = new Map();
+const queueOrder = [];
+let queueHead = 0;
+const lastQueueJoinByUid = new Map();
+
+const QUEUE_JOIN_THROTTLE_MS = 3000;
 
 const buildTelegramName = (user) => {
   if (!user) return 'Player';
@@ -110,6 +115,43 @@ const sanitizeUsername = (value) => {
 
 const send = (ws, obj) => { try { ws?.readyState === 1 && ws.send(JSON.stringify(obj)); } catch {} };
 const toWs = (uid) => wsByUid.get(uid);
+const inQueue = (uid) => queueByUid.has(uid);
+
+const removeFromQueue = (uid) => {
+  if (!uid) return;
+  queueByUid.delete(uid);
+};
+
+const recordQueueJoin = (uid, ws) => {
+  if (queueByUid.has(uid)) return false;
+  const entry = { ws, ts: Date.now() };
+  queueByUid.set(uid, entry);
+  queueOrder.push(uid);
+  return true;
+};
+
+const findNextQueuedUid = (startIndex, skipUid = null) => {
+  for (let i = startIndex; i < queueOrder.length; i += 1) {
+    const uid = queueOrder[i];
+    if (!queueByUid.has(uid)) continue;
+    if (skipUid && uid === skipUid) continue;
+    return { uid, index: i };
+  }
+  return null;
+};
+
+const sendQueueWaiting = (uid) => {
+  const ws = toWs(uid);
+  if (!ws) return;
+  let position = 0;
+  for (let i = queueHead; i < queueOrder.length; i += 1) {
+    const queuedUid = queueOrder[i];
+    if (!queueByUid.has(queuedUid)) continue;
+    position += 1;
+    if (queuedUid === uid) break;
+  }
+  send(ws, { t: "queue.waiting", position });
+};
 
 const LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
 const checkWin = (board) => {
@@ -212,6 +254,36 @@ const startGame = async (uidA, uidB) => {
   console.log(`[GAME] ${gameId}: ${a?.name||X} vs ${b?.name||O}`);
 };
 
+const matchmake = () => {
+  let searchIndex = queueHead;
+  while (true) {
+    const first = findNextQueuedUid(searchIndex);
+    if (!first) {
+      queueHead = queueOrder.length;
+      return;
+    }
+    const second = findNextQueuedUid(first.index + 1, first.uid);
+    if (!second) {
+      queueHead = first.index;
+      sendQueueWaiting(first.uid);
+      return;
+    }
+
+    removeFromQueue(first.uid);
+    removeFromQueue(second.uid);
+    queueHead = second.index + 1;
+
+    send(toWs(first.uid), { t: "queue.left" });
+    send(toWs(second.uid), { t: "queue.left" });
+
+    if (first.uid !== second.uid) {
+      startGame(first.uid, second.uid).catch((e) => console.error("startGame error:", e));
+    }
+
+    searchIndex = queueHead;
+  }
+};
+
 // Heartbeat
 const HEARTBEAT = 30000;
 function heartbeat() { this.isAlive = true; }
@@ -275,26 +347,34 @@ const handlers = {
   },
 
   queue_join(ws) {
-    if (!queue.includes(ws)) queue.push(ws);
-    while (queue.length >= 2) {
-      const aWs = queue.shift();
-      const aId = userByWs.get(aWs)?.id;
-      if (!aId) continue;
+    const uid = userByWs.get(ws)?.id;
+    if (!uid) return;
 
-      const bIndex = queue.findIndex(w => userByWs.get(w)?.id && userByWs.get(w).id !== aId);
-      if (bIndex === -1) { queue.unshift(aWs); break; }
-
-      const [bWs] = queue.splice(bIndex, 1);
-      const bId = userByWs.get(bWs)?.id;
-      if (!bId || bId === aId) { queue.unshift(aWs); if (bWs) queue.push(bWs); continue; }
-
-      startGame(aId, bId).catch((e) => console.error("startGame error:", e));
-      break;
+    const now = Date.now();
+    const lastJoin = lastQueueJoinByUid.get(uid) || 0;
+    if (now - lastJoin < QUEUE_JOIN_THROTTLE_MS) {
+      const retryIn = QUEUE_JOIN_THROTTLE_MS - (now - lastJoin);
+      send(ws, { t: "queue.throttled", retryIn });
+      sendQueueWaiting(uid);
+      return;
     }
+    lastQueueJoinByUid.set(uid, now);
+
+    const added = recordQueueJoin(uid, ws);
+    if (added) {
+      send(ws, { t: "queue.joined" });
+    }
+    sendQueueWaiting(uid);
+    matchmake();
   },
 
   queue_leave(ws) {
-    const i = queue.indexOf(ws); if (i !== -1) queue.splice(i,1);
+    const uid = userByWs.get(ws)?.id;
+    if (!uid) return;
+    if (inQueue(uid)) {
+      removeFromQueue(uid);
+      send(ws, { t: "queue.left" });
+    }
   },
 
   game_move(ws, msg) {
@@ -376,7 +456,8 @@ wss.on("connection", (ws) => {
       const mapped = wsByUid.get(u.id);
       if (mapped === ws) wsByUid.delete(u.id);
       userByWs.delete(ws);
-      const qi = queue.indexOf(ws); if (qi !== -1) queue.splice(qi, 1);
+      removeFromQueue(u.id);
+      lastQueueJoinByUid.delete(u.id);
       for (const [gid,g] of games) if (g.X===u.id || g.O===u.id) {
         let winBy = null;
         if (g.X === u.id && g.O) winBy = "O";
