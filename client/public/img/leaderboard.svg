@@ -1,0 +1,29 @@
+<svg width="48" height="48" viewBox="0 0 24 24" fill="none"
+     xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Топ / Лидеры">
+  <title>Топ / Лидеры</title>
+
+  <!-- Трибуна -->
+  <!-- Левая колонна -->
+  <rect x="4.5" y="11.5" width="4" height="7" rx="0.8"
+        stroke="#00BFFF" stroke-width="1.5" stroke-linejoin="round"/>
+  <!-- Центральная колонна -->
+  <rect x="10" y="8" width="4" height="10.5" rx="0.8"
+        stroke="#00BFFF" stroke-width="1.5" stroke-linejoin="round"/>
+  <!-- Правая колонна -->
+  <rect x="15.5" y="11.5" width="4" height="7" rx="0.8"
+        stroke="#00BFFF" stroke-width="1.5" stroke-linejoin="round"/>
+
+  <!-- Звезда (поднята выше, полностью отделена от синего) -->
+  <path d="M12 1.8
+           L12.7 3.4
+           L14.4 3.6
+           L13.1 4.7
+           L13.5 6.4
+           L12 5.4
+           L10.5 6.4
+           L10.9 4.7
+           L9.6 3.6
+           L11.3 3.4 Z"
+        fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0.8"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

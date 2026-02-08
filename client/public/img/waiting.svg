@@ -1,0 +1,39 @@
+<svg width="48" height="48" viewBox="0 0 24 24" fill="none"
+     xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Подбор соперника — поиск">
+  <title>Поиск соперника (идёт подбор)</title>
+
+  <!-- СЕТКА 3×3 (с разрывами вокруг лупы) -->
+  <!-- Горизонтали -->
+  <line x1="5"    y1="8.5"  x2="8.4"  y2="8.5"  stroke="#00BFFF" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="15.6" y1="8.5"  x2="19"   y2="8.5"  stroke="#00BFFF" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="5"    y1="15.5" x2="8.4"  y2="15.5" stroke="#00BFFF" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="15.6" y1="15.5" x2="19"   y2="15.5" stroke="#00BFFF" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Вертикали -->
+  <line x1="8.5"  y1="5"    x2="8.5"  y2="8.4"  stroke="#00BFFF" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="8.5"  y1="15.6" x2="8.5"  y2="19"   stroke="#00BFFF" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="15.5" y1="5"    x2="15.5" y2="8.4"  stroke="#00BFFF" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="15.5" y1="15.6" x2="15.5" y2="19"   stroke="#00BFFF" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- ЛУПА (белая). Ручка длинная и начинается ровно на внешней границе круга -->
+  <g id="loupe" stroke="#FFFFFF" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="2.6" stroke-width="1.6"/>
+    <line x1="14" y1="14" x2="17.8" y2="17.8" stroke-width="1.6"/>
+  </g>
+
+  <!-- СКАНИРУЮЩЕЕ КОЛЬЦО ВНУТРИ ЛИНЗЫ (анимация очереди) -->
+  <circle cx="12" cy="12" r="2.6" fill="none"
+          stroke="#A9EAFE" stroke-width="1.2" stroke-linecap="round"
+          stroke-dasharray="6 10">
+    <!-- Плавное «скольжение» штриха по кругу -->
+    <animate attributeName="stroke-dashoffset" values="0;-32" dur="1.0s" repeatCount="indefinite"/>
+    <!-- Лёгкое дыхание по непрозрачности -->
+    <animate attributeName="opacity" values="0.55;1;0.55" dur="1.2s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- Уважение к снижению анимации у пользователя -->
+  <style>
+    @media (prefers-reduced-motion: reduce) {
+      #loupe + circle { animation: none; }
+    }
+  </style>
+</svg>
