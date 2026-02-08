@@ -20,6 +20,8 @@ mountBoard(appRoot);
 const nav = mountNav();
 
 const pendingOpponentProfiles = new Set();
+const inviteCode = new URLSearchParams(window.location.search).get('ref') || '';
+let inviteSent = false;
 
 function startQueueSearch({ notify = true, playSound = true } = {}) {
   sendWs({ t: 'queue.join' });
@@ -138,6 +140,12 @@ openWs(
     UI.applyNames();
     notificationSystem.success('Подключено к серверу');
     audioManager.playNotification();
+
+    if (inviteCode && !inviteSent) {
+      inviteSent = true;
+      UI.setStatus('Ожидание друга…', true);
+      sendWs({ t: 'invite.accept', code: inviteCode });
+    }
 
     setTimeout(() => {
       if (refreshIdentity()) {
@@ -342,6 +350,25 @@ openWs(
         { label: 'Ок', onClick: () => { toLobby(); nav.setMode('find'); } },
         { label: '', show: false }
       );
+      return;
+    }
+
+    if (msg.t === 'invite.created' || msg.t === 'invite.waiting') {
+      UI.setStatus('Ожидание друга…', true);
+      notificationSystem.info('Ожидание друга…');
+      return;
+    }
+
+    if (msg.t === 'invite.connected') {
+      UI.setStatus('Друг подключился');
+      notificationSystem.success('Друг подключился');
+      return;
+    }
+
+    if (msg.t === 'invite.invalid') {
+      UI.setStatus('Ссылка недействительна/истекла', true);
+      notificationSystem.error('Ссылка недействительна или истекла');
+      nav.setMode('find');
       return;
     }
   },

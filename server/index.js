@@ -1,6 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import http from "node:http";
+import crypto from "node:crypto";
 import express from "express";
 import helmet from "helmet";
 import cors from "cors";
@@ -11,7 +12,17 @@ import { Telegraf } from "telegraf";
 import { validateTelegramWebAppData, extractUserData } from "./telegramAuth.js";
 import { loggingMiddleware } from "./monitoring.js";
 import { validateGameMove, validateHelloMessage, sanitizeString } from "./validation.js";
-import { ensureSchema, upsertUser, recordMatchOutcome, getLeaders, getUserProfile } from "./db.js";
+import {
+  ensureSchema,
+  upsertUser,
+  recordMatchOutcome,
+  getLeaders,
+  getUserProfile,
+  createInvite,
+  getInvite,
+  acceptInvite,
+  expireInvite,
+} from "./db.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,6 +36,7 @@ const app = express();
 app.set("trust proxy", 1);
 const PUBLIC_DIR = path.resolve(__dirname, "..", "client", "dist");
 
+app.use(express.json({ limit: "100kb" }));
 app.use(helmet({
   contentSecurityPolicy: {
     useDefaults: true,
@@ -75,6 +87,54 @@ app.get("/profile/:id", async (req, res) => {
     res.json({ ok: true, profile });
   } catch (e) {
     console.error("profile error:", e);
+    res.status(500).json({ ok: false });
+  }
+});
+
+const INVITE_TTL_MS = 1000 * 60 * 30;
+const INVITE_CODE_LENGTH = 10;
+
+const generateInviteCode = () =>
+  crypto.randomBytes(8).toString("base64url").slice(0, INVITE_CODE_LENGTH);
+
+const buildInviteLink = (req, code) => {
+  if (!req) {
+    const origin = PUBLIC_URL || `http://localhost:${PORT}`;
+    const base = origin.replace(/\/$/, "");
+    return `${base}/?ref=${encodeURIComponent(code)}`;
+  }
+  const proto = req.headers["x-forwarded-proto"] || req.protocol || "http";
+  const host = req.headers["x-forwarded-host"] || req.headers.host || `localhost:${PORT}`;
+  const origin = PUBLIC_URL || `${proto}://${host}`;
+  const base = origin.replace(/\/$/, "");
+  return `${base}/?ref=${encodeURIComponent(code)}`;
+};
+
+const createInviteRecord = async (hostUserId) => {
+  const expiresAt = new Date(Date.now() + INVITE_TTL_MS);
+  for (let i = 0; i < 5; i += 1) {
+    const code = generateInviteCode();
+    const invite = await createInvite({ code, hostUserId, expiresAt });
+    if (invite) return invite;
+  }
+  return null;
+};
+
+app.post("/invite", async (req, res) => {
+  try {
+    const hostUserId = String(req.body?.host_user_id || req.body?.hostUserId || "").trim();
+    if (!hostUserId) {
+      return res.status(400).json({ ok: false, error: "host_user_id required" });
+    }
+    await ensureSchema();
+    const invite = await createInviteRecord(hostUserId);
+    if (!invite) {
+      return res.status(500).json({ ok: false, error: "invite creation failed" });
+    }
+    const link = buildInviteLink(req, invite.code);
+    res.json({ ok: true, code: invite.code, link, expiresAt: invite.expires_at });
+  } catch (e) {
+    console.error("invite create error:", e);
     res.status(500).json({ ok: false });
   }
 });
@@ -254,6 +314,13 @@ const startGame = async (uidA, uidB) => {
   console.log(`[GAME] ${gameId}: ${a?.name||X} vs ${b?.name||O}`);
 };
 
+const dropFromQueue = (uid) => {
+  if (!uid) return;
+  if (!inQueue(uid)) return;
+  removeFromQueue(uid);
+  send(toWs(uid), { t: "queue.left" });
+};
+
 const matchmake = () => {
   let searchIndex = queueHead;
   while (true) {
@@ -344,6 +411,78 @@ const handlers = {
         await upsertUser({ id: uid, username: usernameForDb, avatar_url: profile.avatar });
       }
     } catch {}
+  },
+
+  async invite_create(ws) {
+    const uid = userByWs.get(ws)?.id;
+    if (!uid) return;
+    try {
+      await ensureSchema();
+      const invite = await createInviteRecord(uid);
+      if (!invite) {
+        send(ws, { t: "invite.invalid", reason: "create_failed" });
+        return;
+      }
+      const link = buildInviteLink(null, invite.code);
+      send(ws, { t: "invite.created", code: invite.code, link, expiresAt: invite.expires_at });
+      send(ws, { t: "invite.waiting", code: invite.code });
+    } catch (e) {
+      console.error("invite_create error:", e);
+      send(ws, { t: "invite.invalid", reason: "create_failed" });
+    }
+  },
+
+  async invite_accept(ws, msg) {
+    const code = typeof msg.code === "string" ? msg.code.trim() : "";
+    const guestId = userByWs.get(ws)?.id;
+    if (!code || !guestId) return;
+
+    try {
+      await ensureSchema();
+      const invite = await getInvite(code);
+      if (!invite) {
+        send(ws, { t: "invite.invalid", reason: "not_found" });
+        return;
+      }
+      if (invite.status !== "pending") {
+        send(ws, { t: "invite.invalid", reason: "used" });
+        return;
+      }
+      if (new Date(invite.expires_at).getTime() <= Date.now()) {
+        await expireInvite(code);
+        send(ws, { t: "invite.invalid", reason: "expired" });
+        return;
+      }
+      if (String(invite.host_user_id) === String(guestId)) {
+        send(ws, { t: "invite.invalid", reason: "self" });
+        return;
+      }
+
+      const hostWs = wsByUid.get(String(invite.host_user_id));
+      if (!hostWs) {
+        send(ws, { t: "invite.invalid", reason: "host_offline" });
+        return;
+      }
+
+      const accepted = await acceptInvite({ code, guestUserId: guestId });
+      if (!accepted) {
+        send(ws, { t: "invite.invalid", reason: "used" });
+        return;
+      }
+
+      dropFromQueue(accepted.host_user_id);
+      dropFromQueue(guestId);
+
+      send(hostWs, { t: "invite.connected", code, guest: guestId });
+      send(ws, { t: "invite.connected", code, host: accepted.host_user_id });
+
+      startGame(String(accepted.host_user_id), String(guestId)).catch((e) =>
+        console.error("startGame error:", e)
+      );
+    } catch (e) {
+      console.error("invite_accept error:", e);
+      send(ws, { t: "invite.invalid", reason: "server_error" });
+    }
   },
 
   queue_join(ws) {
