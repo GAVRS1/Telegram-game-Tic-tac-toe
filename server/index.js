@@ -176,6 +176,24 @@ const sanitizeUsername = (value) => {
 const send = (ws, obj) => { try { ws?.readyState === 1 && ws.send(JSON.stringify(obj)); } catch {} };
 const toWs = (uid) => wsByUid.get(uid);
 const inQueue = (uid) => queueByUid.has(uid);
+const buildOnlineStats = () => {
+  const total = wss.clients.size;
+  let verified = 0;
+  let unverified = 0;
+  for (const user of userByWs.values()) {
+    if (user?.isVerified) verified += 1;
+    else unverified += 1;
+  }
+  const missingHello = Math.max(0, total - userByWs.size);
+  const guest = unverified + missingHello;
+  return { total, verified, guest };
+};
+const broadcastOnlineStats = () => {
+  const stats = buildOnlineStats();
+  wss.clients.forEach((ws) => {
+    send(ws, { t: "online.stats", ...stats });
+  });
+};
 
 const buildOnlineStats = () => {
   const total = wss.clients.size;
@@ -381,7 +399,12 @@ const interval = setInterval(() => {
     try { ws.ping(() => {}); } catch {}
   });
 }, HEARTBEAT);
-wss.on("close", () => clearInterval(interval));
+const ONLINE_STATS_INTERVAL_MS = 7000;
+const onlineStatsInterval = setInterval(broadcastOnlineStats, ONLINE_STATS_INTERVAL_MS);
+wss.on("close", () => {
+  clearInterval(interval);
+  clearInterval(onlineStatsInterval);
+});
 
 const ONLINE_STATS_INTERVAL_MS = 7000;
 const onlineStatsInterval = setInterval(() => {

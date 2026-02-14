@@ -16,16 +16,15 @@ const LABELS = {
 
 export function Nav({ mode, onAction, onRating, onProfile, onlineStats }) {
   const label = LABELS[mode] || "Действие";
-  const total = Number.isFinite(onlineStats?.total) ? onlineStats.total : 0;
-  const verified = Number.isFinite(onlineStats?.verified) ? onlineStats.verified : 0;
-  const guest = Number.isFinite(onlineStats?.guest) ? onlineStats.guest : 0;
+  const total = Number(onlineStats?.total ?? 0);
+  const verified = Number(onlineStats?.verified ?? 0);
+  const guest = Number(onlineStats?.guest ?? 0);
+  const statsText = `Онлайн: ${total} · Вериф.: ${verified} · Гости: ${guest}`;
 
   return (
     <div className="navbar navbar--lg" id="navbar">
       <div className="online-stats" aria-live="polite">
-        <span className="online-stats__label">Онлайн</span>
-        <span className="online-stats__value">{total}</span>
-        <span className="online-stats__breakdown">V {verified} · G {guest}</span>
+        {statsText}
       </div>
       <button className="navbtn" id="tabRating" aria-label="Рейтинг" title="Рейтинг" onClick={onRating}>
         <div className="sym">
