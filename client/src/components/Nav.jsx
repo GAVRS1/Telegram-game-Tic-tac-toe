@@ -14,8 +14,9 @@ const LABELS = {
   rematch: "Реванш",
 };
 
-export function Nav({ mode, onAction, onRating, onProfile, onlineStats }) {
+export function Nav({ mode, onAction, onRating, onProfile, onInvite, onlineStats }) {
   const label = LABELS[mode] || "Действие";
+  const canInvite = mode === "find" || mode === "waiting";
   const total = Number(onlineStats?.total ?? 0);
   const verified = Number(onlineStats?.verified ?? 0);
   const guest = Number(onlineStats?.guest ?? 0);
@@ -31,6 +32,11 @@ export function Nav({ mode, onAction, onRating, onProfile, onlineStats }) {
           <img src="/img/leaderboard.svg" alt="Рейтинг" className="icon" />
         </div>
       </button>
+      {canInvite ? (
+        <button className="navbtn" id="tabInvite" aria-label="Пригласить" title="Пригласить" onClick={onInvite}>
+          <div className="sym" aria-hidden="true" style={{ fontSize: "28px" }}>🔗</div>
+        </button>
+      ) : null}
       <button
         className={`navbtn centerAction ${mode === "waiting" ? "is-waiting" : ""} ${
           mode === "resign" || mode === "rematch" ? "active" : ""

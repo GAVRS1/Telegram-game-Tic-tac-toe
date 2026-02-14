@@ -20,6 +20,7 @@ import {
   getUserProfile,
   createInvite,
   getInvite,
+  getPendingInviteByHost,
   acceptInvite,
   expireInvite,
 } from "./db.js";
@@ -93,6 +94,8 @@ app.get("/profile/:id", async (req, res) => {
 
 const INVITE_TTL_MS = 1000 * 60 * 30;
 const INVITE_CODE_LENGTH = 10;
+const inviteByCode = new Map();
+const inviteCodeByHost = new Map();
 
 const generateInviteCode = () =>
   crypto.randomBytes(8).toString("base64url").slice(0, INVITE_CODE_LENGTH);
@@ -120,6 +123,52 @@ const createInviteRecord = async (hostUserId) => {
   return null;
 };
 
+const cacheInvite = (invite) => {
+  if (!invite?.code || !invite?.host_user_id) return;
+  const normalized = {
+    ...invite,
+    code: String(invite.code),
+    host_user_id: String(invite.host_user_id),
+  };
+  inviteByCode.set(normalized.code, normalized);
+  inviteCodeByHost.set(normalized.host_user_id, normalized.code);
+};
+
+const dropInviteCache = (code, hostUserId = null) => {
+  if (code) {
+    const existing = inviteByCode.get(code);
+    if (existing?.host_user_id) inviteCodeByHost.delete(existing.host_user_id);
+    inviteByCode.delete(code);
+  }
+  if (hostUserId) inviteCodeByHost.delete(String(hostUserId));
+};
+
+const isInviteExpired = (invite) => {
+  const expiresAt = new Date(invite?.expires_at || 0).getTime();
+  return !Number.isFinite(expiresAt) || expiresAt <= Date.now();
+};
+
+const getValidInviteByHost = async (hostUserId) => {
+  const host = String(hostUserId || "");
+  if (!host) return null;
+
+  const cachedCode = inviteCodeByHost.get(host);
+  if (cachedCode) {
+    const cachedInvite = inviteByCode.get(cachedCode);
+    if (cachedInvite && cachedInvite.status === "pending" && !isInviteExpired(cachedInvite)) {
+      return cachedInvite;
+    }
+    dropInviteCache(cachedCode, host);
+  }
+
+  const dbInvite = await getPendingInviteByHost(host);
+  if (dbInvite) {
+    cacheInvite(dbInvite);
+    return dbInvite;
+  }
+  return null;
+};
+
 app.post("/invite", async (req, res) => {
   try {
     const hostUserId = String(req.body?.host_user_id || req.body?.hostUserId || "").trim();
@@ -127,10 +176,11 @@ app.post("/invite", async (req, res) => {
       return res.status(400).json({ ok: false, error: "host_user_id required" });
     }
     await ensureSchema();
-    const invite = await createInviteRecord(hostUserId);
+    const invite = (await getValidInviteByHost(hostUserId)) || (await createInviteRecord(hostUserId));
     if (!invite) {
       return res.status(500).json({ ok: false, error: "invite creation failed" });
     }
+    cacheInvite(invite);
     const link = buildInviteLink(req, invite.code);
     res.json({ ok: true, code: invite.code, link, expiresAt: invite.expires_at });
   } catch (e) {
@@ -176,25 +226,6 @@ const sanitizeUsername = (value) => {
 const send = (ws, obj) => { try { ws?.readyState === 1 && ws.send(JSON.stringify(obj)); } catch {} };
 const toWs = (uid) => wsByUid.get(uid);
 const inQueue = (uid) => queueByUid.has(uid);
-const buildOnlineStats = () => {
-  const total = wss.clients.size;
-  let verified = 0;
-  let unverified = 0;
-  for (const user of userByWs.values()) {
-    if (user?.isVerified) verified += 1;
-    else unverified += 1;
-  }
-  const missingHello = Math.max(0, total - userByWs.size);
-  const guest = unverified + missingHello;
-  return { total, verified, guest };
-};
-const broadcastOnlineStats = () => {
-  const stats = buildOnlineStats();
-  wss.clients.forEach((ws) => {
-    send(ws, { t: "online.stats", ...stats });
-  });
-};
-
 const buildOnlineStats = () => {
   const total = wss.clients.size;
   let verified = 0;
@@ -406,12 +437,6 @@ wss.on("close", () => {
   clearInterval(onlineStatsInterval);
 });
 
-const ONLINE_STATS_INTERVAL_MS = 7000;
-const onlineStatsInterval = setInterval(() => {
-  broadcastOnlineStats();
-}, ONLINE_STATS_INTERVAL_MS);
-wss.on("close", () => clearInterval(onlineStatsInterval));
-
 const handlers = {
   async hello(ws, msg) {
     if (!validateHelloMessage(msg)) return;
@@ -468,11 +493,13 @@ const handlers = {
     if (!uid) return;
     try {
       await ensureSchema();
-      const invite = await createInviteRecord(uid);
+      const reusable = await getValidInviteByHost(uid);
+      const invite = reusable || (await createInviteRecord(uid));
       if (!invite) {
         send(ws, { t: "invite.invalid", reason: "create_failed" });
         return;
       }
+      cacheInvite(invite);
       const link = buildInviteLink(null, invite.code);
       send(ws, { t: "invite.created", code: invite.code, link, expiresAt: invite.expires_at });
       send(ws, { t: "invite.waiting", code: invite.code });
@@ -489,17 +516,21 @@ const handlers = {
 
     try {
       await ensureSchema();
-      const invite = await getInvite(code);
+      const cachedInvite = inviteByCode.get(code);
+      const invite = cachedInvite || (await getInvite(code));
       if (!invite) {
         send(ws, { t: "invite.invalid", reason: "not_found" });
         return;
       }
+      if (!cachedInvite) cacheInvite(invite);
       if (invite.status !== "pending") {
+        dropInviteCache(code, invite.host_user_id);
         send(ws, { t: "invite.invalid", reason: "used" });
         return;
       }
       if (new Date(invite.expires_at).getTime() <= Date.now()) {
         await expireInvite(code);
+        dropInviteCache(code, invite.host_user_id);
         send(ws, { t: "invite.invalid", reason: "expired" });
         return;
       }
@@ -516,9 +547,11 @@ const handlers = {
 
       const accepted = await acceptInvite({ code, guestUserId: guestId });
       if (!accepted) {
+        dropInviteCache(code, invite.host_user_id);
         send(ws, { t: "invite.invalid", reason: "used" });
         return;
       }
+      dropInviteCache(code, accepted.host_user_id);
 
       dropFromQueue(accepted.host_user_id);
       dropFromQueue(guestId);
