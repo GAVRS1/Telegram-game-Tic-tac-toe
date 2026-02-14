@@ -265,6 +265,31 @@ body{
   line-height:1.05;
   margin-top:0;
 }
+.online-stats{
+  position:absolute;
+  top:6px;
+  left:50%;
+  transform:translateX(-50%);
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:3px 10px;
+  border-radius:999px;
+  background:rgba(8,15,28,.75);
+  border:1px solid var(--line);
+  font-size:10px;
+  color:var(--muted);
+  letter-spacing:.02em;
+  pointer-events:none;
+}
+.online-stats__value{
+  color:var(--text);
+  font-weight:700;
+}
+.online-stats__breakdown{
+  color:var(--muted);
+  font-variant-numeric:tabular-nums;
+}
 
 /* ====== АВТОР ====== */
 .author-badge{

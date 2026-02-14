@@ -195,6 +195,26 @@ const broadcastOnlineStats = () => {
   });
 };
 
+const buildOnlineStats = () => {
+  const total = wss.clients.size;
+  let verified = 0;
+  let unverified = 0;
+  userByWs.forEach((user, ws) => {
+    if (!wss.clients.has(ws)) return;
+    if (user?.isVerified) verified += 1;
+    else unverified += 1;
+  });
+  const anonymous = Math.max(0, total - (verified + unverified));
+  const guest = unverified + anonymous;
+  return { total, verified, guest };
+};
+
+const broadcastOnlineStats = () => {
+  const stats = buildOnlineStats();
+  const payload = { t: "online.stats", ...stats };
+  wss.clients.forEach((ws) => send(ws, payload));
+};
+
 const removeFromQueue = (uid) => {
   if (!uid) return;
   queueByUid.delete(uid);
@@ -386,6 +406,12 @@ wss.on("close", () => {
   clearInterval(onlineStatsInterval);
 });
 
+const ONLINE_STATS_INTERVAL_MS = 7000;
+const onlineStatsInterval = setInterval(() => {
+  broadcastOnlineStats();
+}, ONLINE_STATS_INTERVAL_MS);
+wss.on("close", () => clearInterval(onlineStatsInterval));
+
 const handlers = {
   async hello(ws, msg) {
     if (!validateHelloMessage(msg)) return;
@@ -426,6 +452,7 @@ const handlers = {
     });
 
     console.log(`[HELLO] uid=${uid} name="${profile.name}" verified=${profile.isVerified} src=${profile.source}`);
+    broadcastOnlineStats();
 
     try {
       await ensureSchema();
@@ -599,6 +626,8 @@ wss.on("connection", (ws) => {
 
   let msgCount = 0, ts = Date.now();
 
+  broadcastOnlineStats();
+
   ws.on("message", (buf) => {
     const now = Date.now();
     if (now - ts > 1000) { ts = now; msgCount = 0; }
@@ -627,6 +656,7 @@ wss.on("connection", (ws) => {
         endGame(gid, "disconnect", winBy);
       }
     }
+    broadcastOnlineStats();
   });
 });
 
