@@ -1,5 +1,12 @@
 import { isNumericId } from "../utils/identity.js";
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").trim().replace(/\/$/, "");
+
+function apiUrl(path) {
+  if (!API_BASE_URL) return path;
+  return `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
 function normalizeNumber(value) {
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
@@ -53,7 +60,7 @@ export class StatsSystem {
 
     this.loadingServer = true;
     try {
-      const response = await fetch(`/profile/${encodeURIComponent(id)}`, { cache: "no-store" });
+      const response = await fetch(apiUrl(`/profile/${encodeURIComponent(id)}`), { cache: "no-store" });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       const profile = data?.profile ?? null;
