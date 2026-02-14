@@ -133,6 +133,14 @@ export default function App() {
   });
   const [config, setConfig] = useState(null);
   const [winLine, setWinLine] = useState(null);
+  const [pendingInviteCode, setPendingInviteCode] = useState(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      return new URLSearchParams(window.location.search).get("ref")?.trim() || "";
+    } catch {
+      return "";
+    }
+  });
 
   const gameRef = useRef(game);
   const sendRef = useRef(() => {});
@@ -181,6 +189,36 @@ export default function App() {
   }, [config]);
 
   const sendWs = useCallback((payload) => sendRef.current(payload), []);
+
+  const shareInviteLink = useCallback(
+    async (link) => {
+      if (!link) return;
+      const text = "Сразимся в крестики-нолики в Telegram!";
+      const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
+
+      try {
+        if (telegram?.openTelegramLink) {
+          telegram.openTelegramLink(shareUrl);
+          notifications.success("Окно Telegram для отправки приглашения открыто");
+          return;
+        }
+      } catch {}
+
+      try {
+        await navigator.clipboard?.writeText(link);
+        notifications.success("Ссылка скопирована в буфер обмена");
+      } catch {
+        notifications.info("Ссылка приглашения готова: отправьте её другу в Telegram");
+      }
+    },
+    [notifications, telegram]
+  );
+
+  const createInvite = useCallback(() => {
+    sendWs({ t: "invite.create" });
+    setStatus({ text: "Создаём ссылку приглашения…", blink: true });
+    audioManager.playClick();
+  }, [sendWs]);
 
   const setModal = useCallback((next) => {
     setModalState((prev) => ({ ...prev, ...next, open: true }));
@@ -586,8 +624,11 @@ export default function App() {
       if (refreshIdentity()) {
         sendHello();
       }
+      if (pendingInviteCode) {
+        sendWs({ t: "invite.accept", code: pendingInviteCode });
+      }
     }, 120);
-  }, [notifications, refreshIdentity, sendHello]);
+  }, [notifications, pendingInviteCode, refreshIdentity, sendHello, sendWs]);
 
   const onClose = useCallback(() => {
     setStatus({ text: "Отключено. Переподключение…", blink: true });
@@ -612,6 +653,14 @@ export default function App() {
       }
 
       if (msg.t === "game.start") {
+        setPendingInviteCode("");
+        if (typeof window !== "undefined") {
+          const url = new URL(window.location.href);
+          if (url.searchParams.has("ref")) {
+            url.searchParams.delete("ref");
+            window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+          }
+        }
         const rawOpp = msg.opp && typeof msg.opp === "object" ? msg.opp : null;
         const incomingOpp = rawOpp
           ? {
@@ -657,6 +706,67 @@ export default function App() {
           verified: Number.isFinite(verified) ? verified : 0,
           guest: Number.isFinite(guest) ? guest : 0,
         });
+        return;
+      }
+
+      if (msg.t === "queue.joined") {
+        setNavMode("waiting");
+        setStatus({ text: "Поиск соперника…", blink: true });
+        return;
+      }
+
+      if (msg.t === "queue.waiting") {
+        const position = Number(msg.position ?? 0);
+        if (Number.isFinite(position) && position > 0) {
+          setStatus({ text: `Поиск соперника… Позиция: ${position}`, blink: true });
+        }
+        return;
+      }
+
+      if (msg.t === "queue.left") {
+        if (!gameRef.current.gameId) {
+          setNavMode("find");
+          setStatus({ text: "Готово", blink: false });
+        }
+        return;
+      }
+
+      if (msg.t === "queue.throttled") {
+        const retryIn = Math.max(0, Math.ceil(Number(msg.retryIn || 0) / 1000));
+        notifications.info(`Слишком часто. Повторите через ${retryIn} сек.`);
+        return;
+      }
+
+      if (msg.t === "invite.created") {
+        setStatus({ text: "Ссылка приглашения создана", blink: false });
+        shareInviteLink(msg.link);
+        return;
+      }
+
+      if (msg.t === "invite.waiting") {
+        setStatus({ text: "Ожидаем, пока друг откроет ссылку…", blink: true });
+        return;
+      }
+
+      if (msg.t === "invite.connected") {
+        notifications.success("Игрок по приглашению подключился");
+        setStatus({ text: "Игрок найден по приглашению", blink: false });
+        return;
+      }
+
+      if (msg.t === "invite.invalid") {
+        const reasonText = {
+          not_found: "Приглашение не найдено",
+          used: "Приглашение уже использовано",
+          expired: "Срок действия приглашения истёк",
+          self: "Нельзя принять своё приглашение",
+          host_offline: "Игрок не в сети",
+          create_failed: "Не удалось создать приглашение",
+        };
+        const text = reasonText[msg.reason] || "Приглашение недействительно";
+        notifications.error(text);
+        setStatus({ text, blink: false });
+        setPendingInviteCode("");
         return;
       }
 
@@ -884,6 +994,7 @@ export default function App() {
       inviteLastOpponent,
       notifications,
       setModal,
+      shareInviteLink,
       toLobby,
     ]
   );
@@ -987,6 +1098,7 @@ export default function App() {
         onAction={onNavAction}
         onRating={loadRating}
         onProfile={loadProfile}
+        onInvite={createInvite}
         onlineStats={onlineStats}
       />
       <Modal

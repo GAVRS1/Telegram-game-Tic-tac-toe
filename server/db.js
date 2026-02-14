@@ -243,6 +243,24 @@ export async function getInvite(code) {
   return rows[0] || null;
 }
 
+export async function getPendingInviteByHost(hostUserId) {
+  const p = getPool();
+  if (!p) return null;
+  const { rows } = await p.query(
+    `
+      SELECT *
+      FROM invites
+      WHERE host_user_id = $1
+        AND status = 'pending'
+        AND expires_at > NOW()
+      ORDER BY created_at DESC
+      LIMIT 1;
+    `,
+    [String(hostUserId)]
+  );
+  return rows[0] || null;
+}
+
 export async function acceptInvite({ code, guestUserId }) {
   const p = getPool();
   if (!p) return null;
