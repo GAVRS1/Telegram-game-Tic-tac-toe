@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Board } from "./components/Board.jsx";
 import { Nav } from "./components/Nav.jsx";
 import { Modal } from "./components/Modal.jsx";
@@ -11,7 +11,7 @@ import { StatsSystem } from "./services/statsSystem.js";
 import { isNumericId, normalizeId, sanitizeUsername } from "./utils/identity.js";
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").trim().replace(/\/$/, "");
-const WS_URL_FROM_ENV = (import.meta.env.VITE_WS_URL || "").trim();
+const WS_URL = (import.meta.env.VITE_WS_URL || "").trim();
 
 function apiUrl(path) {
   if (!API_BASE_URL) return path;
@@ -131,7 +131,6 @@ export default function App() {
     primary: null,
     secondary: null,
   });
-  const [config, setConfig] = useState(null);
   const [winLine, setWinLine] = useState(null);
   const [pendingInviteCode, setPendingInviteCode] = useState(() => {
     if (typeof window === "undefined") return "";
@@ -165,28 +164,7 @@ export default function App() {
     statsSystemRef.current = new StatsSystem(() => meRef.current);
   }, [meRef]);
 
-  useEffect(() => {
-    fetch("/config.json")
-      .then((response) => {
-        if (!response.ok) throw new Error("Failed to load config.json");
-        return response.json();
-      })
-      .then((data) => {
-        if (mountedRef.current) setConfig(data);
-      })
-      .catch(() => {
-        if (mountedRef.current) setConfig({});
-      });
-  }, []);
-
-  const wsUrl = useMemo(() => {
-    if (WS_URL_FROM_ENV) return WS_URL_FROM_ENV;
-    if (config?.wsUrl) return config.wsUrl;
-    if (typeof window !== "undefined") {
-      return window.location.origin.replace(/^http/, "ws");
-    }
-    return "";
-  }, [config]);
+  const wsUrl = WS_URL;
 
   const sendWs = useCallback((payload) => sendRef.current(payload), []);
 
