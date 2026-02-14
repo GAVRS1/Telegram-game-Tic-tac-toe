@@ -124,6 +124,7 @@ export default function App() {
   });
   const [config, setConfig] = useState(null);
   const [winLine, setWinLine] = useState(null);
+  const [onlineStats, setOnlineStats] = useState({ total: 0, verified: 0, guest: 0 });
 
   const gameRef = useRef(game);
   const sendRef = useRef(() => {});
@@ -589,6 +590,18 @@ export default function App() {
     (msg) => {
       if (!msg || typeof msg !== "object") return;
 
+      if (msg.t === "online.stats") {
+        const total = Number(msg.total);
+        const verified = Number(msg.verified);
+        const guest = Number(msg.guest);
+        setOnlineStats({
+          total: Number.isFinite(total) ? total : 0,
+          verified: Number.isFinite(verified) ? verified : 0,
+          guest: Number.isFinite(guest) ? guest : 0,
+        });
+        return;
+      }
+
       if (msg.t === "game.start") {
         const rawOpp = msg.opp && typeof msg.opp === "object" ? msg.opp : null;
         const incomingOpp = rawOpp
@@ -948,7 +961,13 @@ export default function App() {
         onCellClick={handleCellClick}
         onAuthorClick={handleAuthorClick}
       />
-      <Nav mode={navMode} onAction={onNavAction} onRating={loadRating} onProfile={loadProfile} />
+      <Nav
+        mode={navMode}
+        onAction={onNavAction}
+        onRating={loadRating}
+        onProfile={loadProfile}
+        onlineStats={onlineStats}
+      />
       <Modal
         open={modalState.open}
         title={modalState.title}
