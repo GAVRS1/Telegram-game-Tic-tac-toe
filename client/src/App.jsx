@@ -9,14 +9,7 @@ import { useNotifications } from "./hooks/useNotifications.js";
 import { audioManager } from "./services/audioManager.js";
 import { StatsSystem } from "./services/statsSystem.js";
 import { isNumericId, normalizeId, sanitizeUsername } from "./utils/identity.js";
-
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").trim().replace(/\/$/, "");
-const WS_URL = (import.meta.env.VITE_WS_URL || "").trim();
-
-function apiUrl(path) {
-  if (!API_BASE_URL) return path;
-  return `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
-}
+import { apiUrl, resolveWsUrl } from "./utils/network.js";
 
 const WIN_PHRASES = [
   "Поздравляем! Вы сыграли мощно 👑",
@@ -164,7 +157,7 @@ export default function App() {
     statsSystemRef.current = new StatsSystem(() => meRef.current);
   }, [meRef]);
 
-  const wsUrl = WS_URL;
+  const wsUrl = resolveWsUrl();
 
   const sendWs = useCallback((payload) => sendRef.current(payload), []);
 
