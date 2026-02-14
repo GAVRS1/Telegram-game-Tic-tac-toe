@@ -10,6 +10,14 @@ import { audioManager } from "./services/audioManager.js";
 import { StatsSystem } from "./services/statsSystem.js";
 import { isNumericId, normalizeId, sanitizeUsername } from "./utils/identity.js";
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").trim().replace(/\/$/, "");
+const WS_URL_FROM_ENV = (import.meta.env.VITE_WS_URL || "").trim();
+
+function apiUrl(path) {
+  if (!API_BASE_URL) return path;
+  return `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
 const WIN_PHRASES = [
   "Поздравляем! Вы сыграли мощно 👑",
   "Отличная победа! Так держать 🚀",
@@ -125,7 +133,6 @@ export default function App() {
   });
   const [config, setConfig] = useState(null);
   const [winLine, setWinLine] = useState(null);
-  const [onlineStats, setOnlineStats] = useState({ total: 0, verified: 0, guest: 0 });
 
   const gameRef = useRef(game);
   const sendRef = useRef(() => {});
@@ -165,6 +172,7 @@ export default function App() {
   }, []);
 
   const wsUrl = useMemo(() => {
+    if (WS_URL_FROM_ENV) return WS_URL_FROM_ENV;
     if (config?.wsUrl) return config.wsUrl;
     if (typeof window !== "undefined") {
       return window.location.origin.replace(/^http/, "ws");
@@ -323,7 +331,7 @@ export default function App() {
     });
 
     try {
-      const response = await fetch("/leaders", { cache: "no-store" });
+      const response = await fetch(apiUrl("/leaders"), { cache: "no-store" });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       const rows = Array.isArray(data?.leaders) ? data.leaders : [];
@@ -901,7 +909,7 @@ export default function App() {
 
     pendingOppProfiles.current.add(id);
 
-    fetch(`/profile/${encodeURIComponent(id)}`, { cache: "no-store" })
+    fetch(apiUrl(`/profile/${encodeURIComponent(id)}`), { cache: "no-store" })
       .then((response) => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return response.json();
