@@ -112,6 +112,16 @@ function formatDate(value) {
   }
 }
 
+const RATING_METRICS = [
+  { key: "wins", label: "Победы", valueLabel: "Победы", icon: "🏆" },
+  { key: "achievements", label: "Достижения", valueLabel: "Открыто достижений", icon: "🎖️" },
+  { key: "invites", label: "Приглашения", valueLabel: "Приглашено друзей", icon: "🤝" },
+];
+
+function getRatingMetricConfig(metric) {
+  return RATING_METRICS.find((item) => item.key === metric) || RATING_METRICS[0];
+}
+
 function resolveInviteCodeFromLocation() {
   if (typeof window === "undefined") return "";
 
@@ -393,7 +403,9 @@ export default function App() {
     }
   }, [telegram]);
 
-  const loadRating = useCallback(async () => {
+  const loadRating = useCallback(async (metric = "wins") => {
+    const metricConfig = getRatingMetricConfig(metric);
+
     setModal({
       title: "Топ игроков",
       content: "Загрузка…",
@@ -405,13 +417,47 @@ export default function App() {
     });
 
     try {
-      const response = await fetch(apiUrl("/leaders"), { cache: "no-store" });
+      const response = await fetch(apiUrl(`/leaders?metric=${encodeURIComponent(metricConfig.key)}`), { cache: "no-store" });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       const rows = Array.isArray(data?.leaders) ? data.leaders : [];
+      const selectedMetric = getRatingMetricConfig(data?.metric || metricConfig.key);
+
+      const metricValue = (user) => {
+        if (selectedMetric.key === "achievements") return Number(user.achievements_unlocked ?? 0);
+        if (selectedMetric.key === "invites") return Number(user.invites_count ?? 0);
+        return Number(user.wins ?? 0);
+      };
 
       const content = (
         <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "50vh", overflow: "auto" }}>
+          <div
+            style={{
+              display: "flex",
+              gap: "8px",
+              alignItems: "center",
+              flexWrap: "wrap",
+              marginBottom: "4px",
+            }}
+          >
+            {RATING_METRICS.map((item) => {
+              const active = selectedMetric.key === item.key;
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  className={`btn ${active ? "primary" : ""}`}
+                  style={{ padding: "6px 10px", minHeight: "32px" }}
+                  onClick={() => loadRating(item.key)}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ fontSize: "12px", color: "var(--muted)", marginBottom: "4px" }}>
+            Тип рейтинга: <b style={{ color: "var(--text)" }}>{selectedMetric.label}</b> • Метрика: {selectedMetric.valueLabel}
+          </div>
           {rows.length === 0 ? (
             <div>Список пуст.</div>
           ) : (
@@ -452,7 +498,9 @@ export default function App() {
                     color: "var(--muted)",
                   }}
                 >
-                  <div style={{ fontWeight: 700, color: "var(--text)" }}>🏆 {Number(user.wins ?? 0)}</div>
+                  <div style={{ fontWeight: 700, color: "var(--text)" }}>
+                    {selectedMetric.icon} {metricValue(user)} · {selectedMetric.valueLabel}
+                  </div>
                   <div>🎮 {Number(user.games_played ?? 0)} | ⚖️ {Number(user.win_rate ?? 0)}%</div>
                 </div>
               </div>

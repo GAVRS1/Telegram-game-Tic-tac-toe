@@ -53,6 +53,7 @@ export async function ensureSchema() {
   await p.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS games_played INTEGER NOT NULL DEFAULT 0;`);
   await p.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS losses INTEGER NOT NULL DEFAULT 0;`);
   await p.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS draws INTEGER NOT NULL DEFAULT 0;`);
+  await p.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS invites_count INTEGER NOT NULL DEFAULT 0;`);
   await p.query(`
     CREATE TABLE IF NOT EXISTS achievements (
       id           TEXT PRIMARY KEY,
@@ -174,14 +175,54 @@ export async function recordMatchOutcome({ winnerId = null, loserId = null, draw
 export async function getLeaders(limit = 20) {
   const p = getPool();
   if (!p) return [];
+
   const { rows } = await p.query(
     `
-    SELECT id, username, avatar_url, games_played, wins, losses, draws,
-           CASE WHEN games_played > 0 THEN ROUND((wins::decimal / games_played) * 100) ELSE 0 END AS win_rate
-    FROM users
-    ORDER BY wins DESC, updated_at DESC
-    LIMIT $1;
-  `,
+      SELECT id, username, avatar_url, games_played, wins, losses, draws, invites_count,
+             CASE WHEN games_played > 0 THEN ROUND((wins::decimal / games_played) * 100) ELSE 0 END AS win_rate
+      FROM users
+      ORDER BY wins DESC, updated_at DESC
+      LIMIT $1;
+    `,
+    [limit]
+  );
+  return rows;
+}
+
+export async function getLeadersByAchievements(limit = 20) {
+  const p = getPool();
+  if (!p) return [];
+
+  const { rows } = await p.query(
+    `
+      SELECT u.id, u.username, u.avatar_url, u.games_played, u.wins, u.losses, u.draws, u.invites_count,
+             COUNT(ua.achievement_id)::INT AS achievements_unlocked,
+             CASE WHEN u.games_played > 0 THEN ROUND((u.wins::decimal / u.games_played) * 100) ELSE 0 END AS win_rate
+      FROM users u
+      LEFT JOIN user_achievements ua
+        ON ua.user_id = u.id
+       AND ua.unlocked = true
+      GROUP BY u.id
+      ORDER BY achievements_unlocked DESC, u.updated_at DESC
+      LIMIT $1;
+    `,
+    [limit]
+  );
+  return rows;
+}
+
+export async function getLeadersByInvites(limit = 20) {
+  const p = getPool();
+  if (!p) return [];
+
+  const { rows } = await p.query(
+    `
+      SELECT id, username, avatar_url, games_played, wins, losses, draws, invites_count,
+             CASE WHEN games_played > 0 THEN ROUND((wins::decimal / games_played) * 100) ELSE 0 END AS win_rate
+      FROM users
+      ORDER BY invites_count DESC, updated_at DESC
+      LIMIT $1;
+    `,
     [limit]
   );
   return rows;
@@ -264,7 +305,10 @@ export async function getPendingInviteByHost(hostUserId) {
 export async function acceptInvite({ code, guestUserId }) {
   const p = getPool();
   if (!p) return null;
-  const { rows } = await p.query(
+  const client = await p.connect();
+  try {
+    await client.query("BEGIN");
+    const { rows } = await client.query(
     `
     UPDATE invites
        SET status = 'accepted',
@@ -274,9 +318,35 @@ export async function acceptInvite({ code, guestUserId }) {
        AND expires_at > NOW()
     RETURNING *;
   `,
-    [code, String(guestUserId)]
-  );
-  return rows[0] || null;
+      [code, String(guestUserId)]
+    );
+
+    const accepted = rows[0] || null;
+    if (!accepted) {
+      await client.query("ROLLBACK");
+      return null;
+    }
+
+    if (isNumericId(accepted.host_user_id)) {
+      await client.query(
+        `
+          UPDATE users
+             SET invites_count = invites_count + 1,
+                 updated_at = NOW()
+           WHERE id = $1;
+        `,
+        [Number(accepted.host_user_id)]
+      );
+    }
+
+    await client.query("COMMIT");
+    return accepted;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 export async function expireInvite(code) {
