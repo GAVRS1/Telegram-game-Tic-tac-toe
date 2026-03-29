@@ -1250,14 +1250,14 @@ export default function App() {
   const modeCards = [
     {
       id: "online",
-      emoji: "🌐",
+      image: "/img/search.svg",
       title: "Играть онлайн",
       description: "Быстрый матч через общую очередь игроков.",
       onSelect: handlePlayOnline,
     },
     {
       id: "friends",
-      emoji: "🧑‍🤝‍🧑",
+      image: "/img/profile-info.svg",
       title: "Играть с друзьями",
       description: "Создайте лобби или подключитесь по коду приглашения.",
       onSelect: null,
@@ -1293,7 +1293,7 @@ export default function App() {
     },
     {
       id: "computer",
-      emoji: "🤖",
+      image: "/img/logo.svg",
       title: "Играть с компьютером",
       description: "Режим против бота (временная заглушка).",
       onSelect: openComputerStub,
