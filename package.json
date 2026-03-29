@@ -6,9 +6,10 @@
     "start": "node server/index.js",
     "dev": "nodemon server/index.js",
     "test": "jest",
-    "lint": "eslint server/ public/js/",
-    "format": "prettier --write server/ public/js/",
-    "migrate": "node server/migrate.js"
+    "lint": "eslint server/",
+    "format": "prettier --write server/",
+    "migrate": "node server/migrate.js",
+    "check:single-client": "node scripts/check-single-client.mjs"
   },
   "dependencies": {
     "cors": "^2.8.5",
