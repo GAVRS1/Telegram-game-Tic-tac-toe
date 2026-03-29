@@ -10,7 +10,7 @@ import { useNotifications } from "./hooks/useNotifications.js";
 import { audioManager } from "./services/audioManager.js";
 import { StatsSystem } from "./services/statsSystem.js";
 import { isNumericId, normalizeId, sanitizeUsername } from "./utils/identity.js";
-
+import { apiUrl, resolveWsUrl } from "./utils/network.js";
 
 const WIN_PHRASES = [
   "Поздравляем! Вы сыграли мощно 👑",
