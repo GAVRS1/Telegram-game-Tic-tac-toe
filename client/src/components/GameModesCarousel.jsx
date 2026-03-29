@@ -1,125 +1,124 @@
 import React, { useCallback, useRef, useState } from "react";
 
-const SWIPE_THRESHOLD = 45;
+const SWIPE_THRESHOLD = 35;
+const WHEEL_THRESHOLD = 45;
 
-function FriendsCardActions({ onCreate, onJoin }) {
-  const [joinMode, setJoinMode] = useState(false);
-  const [inviteCode, setInviteCode] = useState("");
+export function GameModesCarousel({ items, activeIndex, onChange }) {
+  const pointerStateRef = useRef({ id: null, startX: 0, dragging: false });
+  const wheelCarryRef = useRef(0);
+  const [isDragging, setIsDragging] = useState(false);
 
-  return (
-    <div className="friends-card__actions" onClick={(event) => event.stopPropagation()}>
-      <button type="button" className="friends-card__btn" onClick={onCreate}>
-        Создать лобби
-      </button>
-
-      {!joinMode ? (
-        <button type="button" className="friends-card__btn friends-card__btn--ghost" onClick={() => setJoinMode(true)}>
-          Присоединиться
-        </button>
-      ) : (
-        <div className="friends-card__join-row">
-          <input
-            className="friends-card__input"
-            value={inviteCode}
-            onChange={(event) => setInviteCode(event.target.value)}
-            placeholder="Введите инвайт-код"
-          />
-          <button
-            type="button"
-            className="friends-card__btn"
-            onClick={() => {
-              const code = inviteCode.trim();
-              if (!code) return;
-              onJoin(code);
-            }}
-          >
-            Войти
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-export function GameModesCarousel({ items, activeIndex, onChange, friendsActions }) {
-  const pointerStateRef = useRef({ id: null, startX: 0, moved: false });
-  const wheelLockRef = useRef(false);
+  const itemCount = Array.isArray(items) ? items.length : 0;
 
   const move = useCallback(
     (delta) => {
-      const count = Array.isArray(items) ? items.length : 0;
-      if (!count) return;
-      onChange((activeIndex + delta + count) % count);
+      if (itemCount <= 0 || typeof onChange !== "function") return;
+      const next = (activeIndex + delta + itemCount) % itemCount;
+      onChange(next);
     },
-    [activeIndex, items, onChange]
+    [activeIndex, itemCount, onChange]
   );
 
   const onPointerDown = useCallback((event) => {
-    pointerStateRef.current = { id: event.pointerId, startX: event.clientX, moved: false };
+    pointerStateRef.current = {
+      id: event.pointerId,
+      startX: event.clientX,
+      dragging: true,
+    };
+    setIsDragging(true);
   }, []);
 
   const onPointerMove = useCallback(
     (event) => {
       const state = pointerStateRef.current;
-      if (state.id !== event.pointerId) return;
+      if (!state.dragging || state.id !== event.pointerId) return;
 
       const deltaX = event.clientX - state.startX;
       if (Math.abs(deltaX) < SWIPE_THRESHOLD) return;
 
-      pointerStateRef.current = { id: null, startX: 0, moved: true };
       move(deltaX > 0 ? -1 : 1);
+      pointerStateRef.current = {
+        id: event.pointerId,
+        startX: event.clientX,
+        dragging: true,
+      };
     },
     [move]
   );
 
-  const onPointerUp = useCallback((event) => {
-    const state = pointerStateRef.current;
-    if (state.id !== event.pointerId) return;
-    pointerStateRef.current = { id: null, startX: 0, moved: false };
+  const clearPointer = useCallback((event) => {
+    if (pointerStateRef.current.id !== event.pointerId) return;
+    pointerStateRef.current = { id: null, startX: 0, dragging: false };
+    setIsDragging(false);
   }, []);
 
   const onWheel = useCallback(
     (event) => {
       event.preventDefault();
-      if (wheelLockRef.current) return;
-      wheelLockRef.current = true;
-      move(event.deltaY > 0 ? 1 : -1);
-      setTimeout(() => {
-        wheelLockRef.current = false;
-      }, 180);
+      wheelCarryRef.current += event.deltaY;
+
+      if (Math.abs(wheelCarryRef.current) < WHEEL_THRESHOLD) return;
+
+      move(wheelCarryRef.current > 0 ? 1 : -1);
+      wheelCarryRef.current = 0;
     },
     [move]
   );
 
+  if (!itemCount) return null;
+
+  const activeItem = items[activeIndex] || items[0];
+
   return (
     <section className="modes-carousel-wrap">
       <div
-        className="modes-carousel"
+        className={`modes-carousel ${isDragging ? "is-dragging" : ""}`}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
+        onPointerUp={clearPointer}
+        onPointerCancel={clearPointer}
         onWheel={onWheel}
       >
-        <div className="modes-carousel__track" style={{ transform: `translateX(-${activeIndex * 100}%)` }}>
-          {items.map((item, index) => (
+        {items.map((item, index) => {
+          const isActive = index === activeIndex;
+          return (
             <article
               key={item.id}
-              className={`mode-card mode-card--vertical ${index === activeIndex ? "mode-card--active" : ""}`}
-              onClick={() => {
-                onChange(index);
-                if (typeof item.onCardClick === "function") item.onCardClick();
+              className={`mode-card ${isActive ? "mode-card--active" : "mode-card--inactive"}`}
+              onClick={() => onChange(index)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onChange(index);
+                }
               }}
             >
               <div className="mode-card__emoji" aria-hidden="true">{item.emoji}</div>
               <div className="mode-card__title">{item.title}</div>
               <div className="mode-card__description">{item.description}</div>
-              {item.renderBody === "friends" ? (
-                <FriendsCardActions onCreate={friendsActions?.onCreate} onJoin={friendsActions?.onJoin} />
-              ) : null}
             </article>
+          );
+        })}
+      </div>
+
+      <div className="modes-carousel__controls">
+        <div className="modes-carousel__dots" aria-label="Выбор режима игры">
+          {items.map((item, index) => (
+            <button
+              key={`${item.id}-dot`}
+              type="button"
+              className={`modes-carousel__dot ${index === activeIndex ? "is-active" : ""}`}
+              onClick={() => onChange(index)}
+              aria-label={item.title}
+            />
           ))}
         </div>
+
+        <button type="button" className="modes-carousel__action" onClick={activeItem?.onSelect}>
+          {activeItem?.cta || "Выбрать"}
+        </button>
       </div>
     </section>
   );

@@ -8,16 +8,7 @@ function buildUserLabel(user) {
   return "Player";
 }
 
-export function Board({
-  me,
-  game,
-  statusText,
-  winLine,
-  onCellClick,
-  onAuthorClick,
-  boardContent = null,
-  modesLayout = false,
-}) {
+export function Board({ me, game, statusText, winLine, onCellClick, onAuthorClick, boardContent = null }) {
   const myName = me?.name?.trim() ? me.name : "Вы";
   const myUsername = me?.username?.trim() ? `@${me.username.replace(/^@/, "")}` : "";
   const myAvatar = me?.avatar || "/img/logo.svg";
@@ -84,11 +75,9 @@ export function Board({
               </div>
             </div>
 
-            <div className={`status-line ${statusText?.blink ? "blink" : ""}`} id="status">
-              {statusText?.text || "Готово"}
-            </div>
-          </>
-        ) : null}
+        <div className={`status-line ${statusText?.blink ? "blink" : ""}`} id="status">
+          {statusText?.text || "Готово"}
+        </div>
         {boardContent ? (
           <div className="board-slot">{boardContent}</div>
         ) : (

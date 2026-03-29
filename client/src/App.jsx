@@ -209,8 +209,7 @@ export default function App() {
     [notifications, telegram]
   );
 
-  const createInvite = useCallback(({ share = "link" } = {}) => {
-    pendingInviteShareModeRef.current = share;
+  const createInvite = useCallback(() => {
     setScreen("game");
     sendWs({ t: "invite.create" });
     setStatus({ text: "Создаём ссылку приглашения…", blink: true });
@@ -289,6 +288,35 @@ export default function App() {
   const handlePlayOnline = useCallback(() => {
     startQueueSearch();
   }, [startQueueSearch]);
+
+  const openFriendsModal = useCallback(() => {
+    setScreen("game");
+    setModal({
+      title: "Играть с друзьями",
+      content: "Выберите: создать новое лобби или войти по коду приглашения друга.",
+      primary: {
+        label: "Создать лобби",
+        onClick: () => {
+          hideModal();
+          createInvite();
+        },
+      },
+      secondary: {
+        label: "Ввести код",
+        onClick: () => {
+          const code = window.prompt("Введите код приглашения")?.trim();
+          if (!code) {
+            notifications.info("Введите код приглашения");
+            return;
+          }
+          sendWs({ t: "invite.accept", code });
+          setStatus({ text: "Подключаем к лобби друга…", blink: true });
+          hideModal();
+          audioManager.playClick();
+        },
+      },
+    });
+  }, [createInvite, hideModal, notifications, sendWs, setModal]);
 
   const openComputerStub = useCallback(() => {
     setScreen("game");
@@ -1135,55 +1163,43 @@ export default function App() {
       emoji: "🌐",
       title: "Играть онлайн",
       description: "Быстрый матч через общую очередь игроков.",
-      onCardClick: handlePlayOnline,
+      cta: "Встать в очередь",
+      onSelect: handlePlayOnline,
     },
     {
       id: "friends",
       emoji: "🧑‍🤝‍🧑",
       title: "Играть с друзьями",
       description: "Создайте лобби или подключитесь по коду приглашения.",
-      renderBody: "friends",
+      cta: "Открыть лобби",
+      onSelect: openFriendsModal,
     },
     {
       id: "computer",
       emoji: "🤖",
       title: "Играть с компьютером",
       description: "Режим против бота (временная заглушка).",
-      onCardClick: openComputerStub,
+      cta: "Скоро",
+      onSelect: openComputerStub,
     },
   ];
 
-  const isModesScreen = !game.gameId && screen === "modes";
+  const shouldShowBoard = Boolean(game.gameId || screen === "game");
 
   return (
     <div id="app">
-      <Board
-        me={me}
-        game={gameView}
-        statusText={status}
-        winLine={winLine}
-        onCellClick={handleCellClick}
-        onAuthorClick={handleAuthorClick}
-        modesLayout={isModesScreen}
-        boardContent={
-          isModesScreen ? (
-            <GameModesCarousel
-              items={modeCards}
-              activeIndex={activeModeIndex}
-              onChange={setActiveModeIndex}
-              friendsActions={{
-                onCreate: () => createInvite({ share: "code" }),
-                onJoin: (code) => {
-                  sendWs({ t: "invite.accept", code });
-                  setScreen("game");
-                  setStatus({ text: "Подключаем к лобби друга…", blink: true });
-                  audioManager.playClick();
-                },
-              }}
-            />
-          ) : null
-        }
-      />
+      {shouldShowBoard ? (
+        <Board
+          me={me}
+          game={gameView}
+          statusText={status}
+          winLine={winLine}
+          onCellClick={handleCellClick}
+          onAuthorClick={handleAuthorClick}
+        />
+      ) : (
+        <GameModesCarousel items={modeCards} activeIndex={activeModeIndex} onChange={setActiveModeIndex} />
+      )}
       <Nav
         mode={navMode}
         onAction={onNavAction}
