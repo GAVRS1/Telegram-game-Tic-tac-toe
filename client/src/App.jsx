@@ -122,7 +122,7 @@ function getRatingMetricConfig(metric) {
   return RATING_METRICS.find((item) => item.key === metric) || RATING_METRICS[0];
 }
 
-function resolveInviteCodeFromLocation() {
+function resolveStartParamFromLocation() {
   if (typeof window === "undefined") return "";
 
   try {
@@ -137,6 +137,19 @@ function resolveInviteCodeFromLocation() {
   const tg = window.Telegram?.WebApp;
   const startParam = tg?.initDataUnsafe?.start_param;
   return typeof startParam === "string" ? startParam.trim() : "";
+}
+
+function isReferralStartParam(value) {
+  if (typeof value !== "string") return false;
+  const normalized = value.trim();
+  if (!normalized) return false;
+  return /^ref[_:-]?[0-9]+$/i.test(normalized) || /^[0-9]+$/.test(normalized);
+}
+
+function resolveInviteCodeFromLocation() {
+  const startParam = resolveStartParamFromLocation();
+  if (!startParam || isReferralStartParam(startParam)) return "";
+  return startParam;
 }
 
 export default function App() {
@@ -686,6 +699,7 @@ export default function App() {
   const sendHello = useCallback(() => {
     const currentMe = meRef.current;
     if (!currentMe) return;
+    const startParam = resolveStartParamFromLocation();
     const payload = {
       t: "hello",
       uid: currentMe.id,
@@ -693,6 +707,7 @@ export default function App() {
       username: currentMe.username,
       avatar: currentMe.avatar,
       initData: initData || telegram?.initData || "",
+      startParam,
     };
     const fingerprint = JSON.stringify(payload);
     if (fingerprint === lastHelloFingerprintRef.current) return;
