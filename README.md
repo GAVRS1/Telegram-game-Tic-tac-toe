@@ -3,27 +3,34 @@
 Кроссплатформенная игра «крестики-нолики» запускается прямо внутри Telegram как Web App. Пользователь открывает бота, авторизуется через Telegram Web App SDK и подключается к серверу по WebSocket, чтобы играть в реальном времени. [Сайт игры](https://tttoeonl.ru/)
 
 ## Кратко о проекте
-- **Бэкенд**: Node.js + Express обслуживает статику, отдаёт `config.json` для фронтенда, валидирует подписи Telegram Web App и держит WebSocket-подключения.
-- **Фронтенд**: находится в `public/`, написан на ванильном JS, использует Telegram Web App SDK и WebSocket для обмена ходами.
+- **Бэкенд**: Node.js + Express предоставляет API/WS, валидирует подписи Telegram Web App, управляет матчмейкингом и игровой сессией.
+- **Frontend (production)**: собирается из `client/` в `client/dist` (React + Vite) и деплоится отдельно от backend.
+- **Legacy frontend**: папка `public/` содержит исторический ванильный клиент и используется только как legacy-слой/для обратной совместимости.
 - **Данные**: PostgreSQL хранит профили, статистику и достижения игроков.
 - **Инфраструктура**: защита заголовков через Helmet, ограничение запросов, мониторинг, миграции БД через скрипты Node.js.
 
 ## Связка бэкенда и фронтенда
-1. Фронтенд грузится из `public/index.html`, читает `/config.json` и открывает WebSocket на том же хосте.
-2. Telegram Web App SDK передаёт данные авторизации; сервер проверяет подпись, создаёт/обновляет профиль и ставит игрока в очередь.
-3. Все игровые события (очередь, ходы, завершение) идут через WebSocket; сервер валидирует ходы и транслирует состояние двум соперникам.
-4. Результаты записываются в PostgreSQL, достижения пересчитываются и доступны через REST-эндпоинты `/leaders` и `/profile/:id`.
+1. SPA-фронтенд (production build: `client/dist`) подключается к backend по HTTP (REST) и WebSocket.
+2. Telegram Web App SDK передаёт данные авторизации; backend проверяет подпись, создаёт/обновляет профиль и ставит игрока в очередь.
+3. Игровые события (поиск соперника, ходы, завершение игры) идут через WebSocket; backend валидирует действия и синхронизирует состояние у обоих игроков.
+4. Результаты матчей сохраняются в PostgreSQL; статистика и достижения доступны через REST-эндпоинты `/leaders` и `/profile/:id`.
+5. Папка `public/` остаётся legacy-слоем и не является основным production-frontend.
 
 ## Структура файлов
 ```
 .
-├── public/              # Фронтенд (index.html, стили, скрипты, изображения)
+├── client/              # Актуальный фронтенд (React + Vite)
+│   ├── src/             # Исходники фронтенда
+│   ├── public/          # Статические ассеты для Vite
+│   ├── dist/            # Production-сборка фронтенда (build output)
+│   └── package.json
+├── public/              # Legacy-frontend (ванильный JS, обратная совместимость)
 │   ├── js/
 │   ├── img/
 │   ├── styles.css
 │   └── index.html
 ├── server/              # Бэкенд и вспомогательные модули
-│   ├── index.js         # Точки входа HTTP + WebSocket, отдача статики и config.json
+│   ├── index.js         # Точка входа HTTP + WebSocket backend-сервиса
 │   ├── db.js            # Подключение к PostgreSQL и запросы
 │   ├── migrate.js       # Скрипт применения миграций
 │   ├── telegramAuth.js  # Проверка подписи Telegram Web App
@@ -33,9 +40,10 @@
 │   ├── monitoring.js    # Логирование и метрики
 │   └── errorHandler.js  # Единая обработка ошибок
 ├── migrations/          # SQL-миграции для схемы БД
-├── package.json         # Скрипты и зависимости
+├── package.json         # Скрипты backend в корне
 ├── package-lock.json
-├── QRcode.jpg  
+├── netlify.toml         # Конфигурация деплоя frontend на Netlify
+├── QRcode.jpg
 └── README.md
 ```
 
@@ -45,17 +53,35 @@
 - WebSocket (ws)
 - PostgreSQL (pg)
 - Telegram (бот для выдачи Web App)
-- Vanilla JS + Telegram Web App SDK
+- React + Vite + Telegram Web App SDK
 
 ## Как запустить локально
-1. Установите зависимости: `npm install`.
-2. Создайте `.env` с настройками:
+1. Установите зависимости в корне: `npm install`.
+2. Установите зависимости фронтенда: `cd client && npm install`.
+3. Создайте `.env` с настройками:
    - `PORT` — порт HTTP/WS (по умолчанию 8080);
    - `BOT_TOKEN` — токен Telegram-бота;
    - `PUBLIC_URL` — внешний URL для Web App (если отличается от локального);
    - параметры подключения к PostgreSQL (`DATABASE_URL` или `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`, `PGSSL`).
-3. Примените миграции: `npm run migrate` (создаст таблицы для пользователей, статистики и достижений).
-4. Запустите сервер: `npm run start` (start.bat). Статика будет по `http://localhost:8080`, WebSocket — на том же хосте.
+4. Примените миграции: `npm run migrate` (создаст таблицы для пользователей, статистики и достижений).
+5. Запустите backend (из корня репозитория): `npm run start`.
+6. Запустите frontend в режиме разработки:
+   - `cd client`
+   - `npm run dev`
+7. Production-сборка frontend:
+   - `cd client`
+   - `npm run build`
+
+## Deployment topology
+- **Frontend (Netlify)**:
+  - Источник: `client/`
+  - Команда сборки: `npm run build`
+  - Публикуемая директория: `client/dist`
+- **Backend (отдельный API/WS сервис)**:
+  - Запуск из корня: `npm run start`
+  - Предоставляет REST API и WebSocket endpoint для frontend.
+- **Legacy слой**:
+  - `public/` не используется как основной production-frontend и сохранён для совместимости.
 
 ## Деплой фронтенда на Netlify
 - Для фронтенда из папки `client/` добавлен `netlify.toml` в корне репозитория.
