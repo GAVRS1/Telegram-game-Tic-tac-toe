@@ -15,16 +15,8 @@ export const createInviteService = ({ port, publicUrl }) => {
     crypto.randomBytes(8).toString("base64url").slice(0, INVITE_CODE_LENGTH);
 
   const buildInviteLink = (req, code) => {
-    if (!req) {
-      const origin = publicUrl || `http://localhost:${port}`;
-      const base = origin.replace(/\/$/, "");
-      return `${base}/?ref=${encodeURIComponent(code)}`;
-    }
-    const proto = req.headers["x-forwarded-proto"] || req.protocol || "http";
-    const host = req.headers["x-forwarded-host"] || req.headers.host || `localhost:${port}`;
-    const origin = publicUrl || `${proto}://${host}`;
-    const base = origin.replace(/\/$/, "");
-    return `${base}/?ref=${encodeURIComponent(code)}`;
+    const inviteCode = encodeURIComponent(code);
+    return `https://t.me/TTToeONL_bot/game?startapp=${inviteCode}`;
   };
 
   const cacheInvite = (invite) => {

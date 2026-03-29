@@ -18,6 +18,11 @@ function getTelegramUser(tg) {
   return tg?.initDataUnsafe?.user || null;
 }
 
+function getTelegramWebApp() {
+  if (typeof window === "undefined") return null;
+  return window.Telegram?.WebApp || null;
+}
+
 function fullName(user) {
   if (!user) return "Player";
   const first = (user.first_name || user.firstName || "").trim();
@@ -68,12 +73,48 @@ export function useTelegramAuth() {
   }, [me]);
 
   useEffect(() => {
-    const tg = typeof window !== "undefined" ? window.Telegram?.WebApp : null;
-    if (tg) {
+    let attempts = 0;
+    let timer = null;
+
+    const attachTelegram = () => {
+      const tg = getTelegramWebApp();
+      if (!tg) return false;
+
       initTelegram(tg);
       setTelegram(tg);
       setInitData(tg.initData || "");
-    }
+
+      const user = getTelegramUser(tg);
+      if (user) {
+        setMe((prev) => {
+          const next = buildInitialMe(user);
+          if (
+            prev.id === next.id
+            && prev.name === next.name
+            && prev.avatar === next.avatar
+            && prev.username === next.username
+          ) {
+            return prev;
+          }
+          return next;
+        });
+      }
+
+      return true;
+    };
+
+    if (attachTelegram()) return;
+
+    timer = window.setInterval(() => {
+      attempts += 1;
+      if (attachTelegram() || attempts >= 30) {
+        window.clearInterval(timer);
+      }
+    }, 200);
+
+    return () => {
+      if (timer) window.clearInterval(timer);
+    };
   }, []);
 
   useEffect(() => {
