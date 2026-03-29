@@ -61,6 +61,7 @@
 3. Создайте `.env` с настройками:
    - `PORT` — порт HTTP/WS (по умолчанию 8080);
    - `BOT_TOKEN` — токен Telegram-бота;
+   - `TELEGRAM_INITDATA_TTL_SEC` — TTL для Telegram `initData` в секундах (по умолчанию `600`, то есть 10 минут). Если `auth_date` старше TTL, данные авторизации отклоняются;
    - `PUBLIC_URL` — внешний URL для Web App (если отличается от локального);
    - `CORS_ORIGINS` — CSV-список разрешённых Origin для backend API (поддерживаются маски вида `https://*.netlify.app`, localhost разрешён для dev автоматически), например: `https://app.example.com,https://*.netlify.app`;
    - параметры подключения к PostgreSQL (`DATABASE_URL` или `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`, `PGSSL`).

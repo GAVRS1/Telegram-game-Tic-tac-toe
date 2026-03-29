@@ -1,7 +1,18 @@
 import crypto from 'crypto';
 
-export function validateTelegramWebAppData(initData) {
-  if (!initData) return false;
+const DEFAULT_INITDATA_TTL_SEC = 600;
+
+const getInitDataTtlSec = () => {
+  const raw = process.env.TELEGRAM_INITDATA_TTL_SEC;
+  const parsed = Number(raw);
+  if (Number.isFinite(parsed) && parsed > 0) {
+    return Math.floor(parsed);
+  }
+  return DEFAULT_INITDATA_TTL_SEC;
+};
+
+export function validateTelegramInitData(initData) {
+  if (!initData) return { isValid: false, reason: 'empty_init_data' };
 
   const urlParams = new URLSearchParams(initData);
   const hash = urlParams.get('hash');
@@ -14,7 +25,7 @@ export function validateTelegramWebAppData(initData) {
 
   // Поддерживаем оба имени переменной
   const BOT = process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN || '';
-  if (!BOT) return false;
+  if (!BOT) return { isValid: false, reason: 'missing_bot_token' };
 
   const secretKey = crypto.createHmac('sha256', 'WebAppData')
     .update(BOT)
@@ -24,11 +35,46 @@ export function validateTelegramWebAppData(initData) {
     .update(dataCheckString)
     .digest('hex');
 
-  return calculatedHash === hash;
+  if (calculatedHash !== hash) {
+    return { isValid: false, reason: 'invalid_signature' };
+  }
+
+  const authDateRaw = urlParams.get('auth_date');
+  const authDate = Number(authDateRaw);
+  if (!Number.isInteger(authDate) || authDate <= 0) {
+    return { isValid: false, reason: 'invalid_auth_date' };
+  }
+
+  const ttlSec = getInitDataTtlSec();
+  const nowSec = Math.floor(Date.now() / 1000);
+  const ageSec = nowSec - authDate;
+
+  if (ageSec > ttlSec) {
+    return {
+      isValid: false,
+      reason: 'expired',
+      authDate,
+      ageSec,
+      ttlSec,
+    };
+  }
+
+  return {
+    isValid: true,
+    reason: 'ok',
+    authDate,
+    ageSec,
+    ttlSec,
+  };
 }
 
-export function extractUserData(initData) {
-  if (!validateTelegramWebAppData(initData)) return null;
+export function validateTelegramWebAppData(initData) {
+  return validateTelegramInitData(initData).isValid;
+}
+
+export function extractUserData(initData, options = {}) {
+  const { skipValidation = false } = options;
+  if (!skipValidation && !validateTelegramWebAppData(initData)) return null;
 
   const urlParams = new URLSearchParams(initData);
   const userParam = urlParams.get('user');

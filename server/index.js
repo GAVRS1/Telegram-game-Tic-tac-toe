@@ -9,7 +9,7 @@ import rateLimit from "express-rate-limit";
 import "dotenv/config";
 import { WebSocketServer } from "ws";
 import { Telegraf } from "telegraf";
-import { validateTelegramWebAppData, extractUserData } from "./telegramAuth.js";
+import { validateTelegramInitData, extractUserData } from "./telegramAuth.js";
 import { loggingMiddleware } from "./monitoring.js";
 import { validateGameMove, validateHelloMessage, sanitizeString } from "./validation.js";
 import {
@@ -504,17 +504,27 @@ const handlers = {
 
     let profile = { id: uid, name, username: usernameHint, avatar, isVerified: false, source: 'fallback' };
 
-    if (initData && validateTelegramWebAppData(initData)) {
-      const userData = extractUserData(initData);
-      if (userData && String(userData.id) === uid) {
-        profile = {
-          id: uid,
-          name: buildTelegramName(userData),
-          username: (userData.username || '').trim(),
-          avatar: userData.photo_url || '',
-          isVerified: true,
-          source: 'telegram'
-        };
+    if (initData) {
+      const initDataValidation = validateTelegramInitData(initData);
+      if (initDataValidation.reason === "expired") {
+        const authDateIso = new Date(initDataValidation.authDate * 1000).toISOString();
+        console.warn(
+          `[HELLO] expired initData uid=${uid} auth_date=${authDateIso} age_sec=${initDataValidation.ageSec} ttl_sec=${initDataValidation.ttlSec}`
+        );
+      }
+
+      if (initDataValidation.isValid) {
+        const userData = extractUserData(initData, { skipValidation: true });
+        if (userData && String(userData.id) === uid) {
+          profile = {
+            id: uid,
+            name: buildTelegramName(userData),
+            username: (userData.username || '').trim(),
+            avatar: userData.photo_url || '',
+            isVerified: true,
+            source: 'telegram'
+          };
+        }
       }
     }
 
