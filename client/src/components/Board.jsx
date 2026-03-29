@@ -8,7 +8,16 @@ function buildUserLabel(user) {
   return "Player";
 }
 
-export function Board({ me, game, statusText, winLine, onCellClick, onAuthorClick, boardContent = null }) {
+export function Board({
+  me,
+  game,
+  statusText,
+  winLine,
+  onCellClick,
+  onAuthorClick,
+  boardContent = null,
+  modesLayout = false,
+}) {
   const myName = me?.name?.trim() ? me.name : "Вы";
   const myUsername = me?.username?.trim() ? `@${me.username.replace(/^@/, "")}` : "";
   const myAvatar = me?.avatar || "/img/logo.svg";
@@ -53,6 +62,7 @@ export function Board({ me, game, statusText, winLine, onCellClick, onAuthorClic
                   {youMark}
                 </span>
               </div>
+
               <div className="badge" id="oppBadge">
                 <div className="info">
                   <img className="ava" id="oppAva" src={oppAvatar} alt={oppLabel} />
@@ -75,31 +85,37 @@ export function Board({ me, game, statusText, winLine, onCellClick, onAuthorClic
               </div>
             </div>
 
-        <div className={`status-line ${statusText?.blink ? "blink" : ""}`} id="status">
-          {statusText?.text || "Готово"}
-        </div>
-        {boardContent ? (
-          <div className="board-slot">{boardContent}</div>
+            <div className={`status-line ${statusText?.blink ? "blink" : ""}`} id="status">
+              {statusText?.text || "Готово"}
+            </div>
+
+            {boardContent ? (
+              <div className="board-slot">{boardContent}</div>
+            ) : (
+              <div className="board" id="board">
+                {game?.board?.map((value, index) => {
+                  const isWin = Array.isArray(winLine) && winLine.includes(index);
+                  const isDisabled = Boolean(value) || !game?.myMoveAllowed;
+
+                  return (
+                    <button
+                      key={index}
+                      type="button"
+                      className={`cell${value ? ` ${value.toLowerCase()}` : ""}${isWin ? " win" : ""}${
+                        isDisabled ? " disabled" : ""
+                      }`}
+                      data-i={index}
+                      onClick={() => onCellClick(index)}
+                    >
+                      {value || ""}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </>
         ) : (
-          <div className="board" id="board">
-            {game?.board?.map((value, index) => {
-              const isWin = Array.isArray(winLine) && winLine.includes(index);
-              const isDisabled = Boolean(value) || !game?.myMoveAllowed;
-              return (
-                <button
-                  key={index}
-                  type="button"
-                  className={`cell${value ? ` ${value.toLowerCase()}` : ""}${isWin ? " win" : ""}${
-                    isDisabled ? " disabled" : ""
-                  }`}
-                  data-i={index}
-                  onClick={() => onCellClick(index)}
-                >
-                  {value || ""}
-                </button>
-              );
-            })}
-          </div>
+          <div className="board-slot">{boardContent}</div>
         )}
       </div>
     </div>
