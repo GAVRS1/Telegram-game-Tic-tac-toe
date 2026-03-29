@@ -5,7 +5,7 @@
 - Поддержка переменных окружения для фронтенда:
   - `VITE_API_BASE_URL` — базовый URL вашего backend API.
   - `VITE_WS_URL` — полный URL WebSocket сервера.
-- Файл `client/netlify.env.example` с примером переменных.
+- Используется единый `.env` в корне репозитория для backend и frontend-сборки (через `envDir` в Vite).
 
 ## 1) Подготовьте backend
 Netlify хостит фронтенд (статический сайт). Ваш Node.js/WebSocket сервер нужно развернуть отдельно (например, Render, Railway, VPS).
@@ -32,13 +32,13 @@ CORS_ORIGINS=https://your-site.netlify.app,https://*.netlify.app
 - **Build command**: `npm run build`
 - **Publish directory**: `dist`
 
-## 3) Добавьте переменные окружения в Netlify
-В Netlify: **Site settings → Environment variables** добавьте:
+## 3) Заполните единый `.env` в корне репозитория
+Добавьте/проверьте в корневом `.env`:
 
-- `VITE_API_BASE_URL` = `https://api.example.com`
-- `VITE_WS_URL` = `wss://api.example.com`
+- `VITE_API_BASE_URL=https://api.example.com`
+- `VITE_WS_URL=wss://api.example.com`
 
-> Важно: переменные с префиксом `VITE_` встраиваются в клиентский бандл при сборке.
+> Важно: переменные с префиксом `VITE_` встраиваются в клиентский бандл при сборке. Для Netlify продублируйте эти же значения в **Site settings → Environment variables**.
 
 ## 4) Запустите деплой
 1. Нажмите **Deploy site** (или запушьте изменения в ветку, подключенную к Netlify).
@@ -62,12 +62,7 @@ npm run build
 npm run preview
 ```
 
-Для локальной проверки с переменными можно создать `client/.env.local`:
-
-```env
-VITE_API_BASE_URL=https://api.example.com
-VITE_WS_URL=wss://api.example.com
-```
+Для локальной проверки используйте тот же корневой `.env` — отдельный `client/.env.local` больше не нужен.
 
 ## Частые проблемы
 - **Ошибка CORS**: проверьте `CORS_ORIGINS` на backend (например, `https://your-site.netlify.app,https://*.netlify.app`).
