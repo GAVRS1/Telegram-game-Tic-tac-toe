@@ -9,7 +9,10 @@
     "lint": "eslint server/",
     "format": "prettier --write server/",
     "migrate": "node server/migrate.js",
-    "check:single-client": "node scripts/check-single-client.mjs"
+    "check:single-client": "node scripts/check-single-client.mjs",
+    "check:imports": "node scripts/check-import-cycles.mjs",
+    "check:module-size": "node scripts/check-module-sizes.mjs",
+    "check:smoke-static": "npm run lint && npm run check:imports && npm run check:module-size"
   },
   "dependencies": {
     "cors": "^2.8.5",
