@@ -137,7 +137,7 @@ export default function App() {
   const [activeModeIndex, setActiveModeIndex] = useState(0);
   const [friendInviteInputVisible, setFriendInviteInputVisible] = useState(false);
   const [friendInviteInput, setFriendInviteInput] = useState("");
-  const [navMode, setNavMode] = useState("find");
+  const [, setNavMode] = useState("find");
   const [onlineStats, setOnlineStats] = useState({ total: 0, verified: 0, guest: 0 });
   const [modalState, setModalState] = useState({
     open: false,
@@ -238,18 +238,6 @@ export default function App() {
     [notifications, sendWs]
   );
 
-  const cancelQueueSearch = useCallback(
-    ({ notify = true, playSound = true } = {}) => {
-      sendWs({ t: "queue.leave" });
-      if (!gameRef.current.gameId) setScreen("modes");
-      setNavMode("find");
-      setStatus({ text: "Готово", blink: false });
-      if (notify) notifications.info("Поиск остановлен");
-      if (playSound) audioManager.playClick();
-    },
-    [notifications, sendWs]
-  );
-
   const inviteLastOpponent = useCallback(() => {
     const lastOpp = gameRef.current.lastOpp;
     if (!lastOpp?.id) {
@@ -330,42 +318,6 @@ export default function App() {
       audioManager.playClick();
     },
     [sendWs, toLobby]
-  );
-
-  const onNavAction = useCallback(
-    (mode) => {
-      if (mode === "find") {
-        startQueueSearch();
-      }
-      if (mode === "waiting") {
-        cancelQueueSearch();
-      }
-      if (mode === "resign") {
-        if (gameRef.current.gameId) {
-          setModal({
-            title: "Сдаться?",
-            content: "Вы уверены, что хотите сдаться?",
-            primary: {
-              label: "Сдаться",
-              onClick: () => {
-                sendWs({ t: "game.resign", gameId: gameRef.current.gameId });
-                hideModal();
-                audioManager.playClick();
-              },
-            },
-            secondary: {
-              label: "Отмена",
-              onClick: () => {
-                hideModal();
-                audioManager.playClick();
-              },
-            },
-          });
-        }
-      }
-      if (mode === "rematch") inviteLastOpponent();
-    },
-    [cancelQueueSearch, hideModal, inviteLastOpponent, sendWs, setModal, startQueueSearch]
   );
 
   const handleCellClick = useCallback(
@@ -1226,11 +1178,9 @@ export default function App() {
         />
       )}
       <Nav
-        mode={navMode}
-        onAction={onNavAction}
         onRating={loadRating}
         onProfile={loadProfile}
-        onInvite={createInvite}
+        onAchievements={loadProfile}
         onlineStats={onlineStats}
       />
       <Modal
