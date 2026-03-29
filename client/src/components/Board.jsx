@@ -33,45 +33,47 @@ export function Board({ me, game, statusText, winLine, onCellClick, onAuthorClic
         </div>
       </button>
 
-      <div className="card">
-        <div className="badges">
-          <div className="badge" id="youBadge">
-            <div className="info">
-              <img className="ava" id="youAva" src={myAvatar} alt={myName} />
-              <div className="text">
-                <span className="name" id="youName" title={buildUserLabel(me)}>
-                  {myName}
+      <div className={`card ${modesLayout ? "card--modes" : ""}`}>
+        {!modesLayout ? (
+          <>
+            <div className="badges">
+              <div className="badge" id="youBadge">
+                <div className="info">
+                  <img className="ava" id="youAva" src={myAvatar} alt={myName} />
+                  <div className="text">
+                    <span className="name" id="youName" title={buildUserLabel(me)}>
+                      {myName}
+                    </span>
+                    <span className="username" id="youUsername" style={{ display: myUsername ? "block" : "none" }}>
+                      {myUsername}
+                    </span>
+                  </div>
+                </div>
+                <span className={`mark ${game?.you === "X" ? "x" : "o"}`} id="youMark">
+                  {youMark}
                 </span>
-                <span className="username" id="youUsername" style={{ display: myUsername ? "block" : "none" }}>
-                  {myUsername}
+              </div>
+              <div className="badge" id="oppBadge">
+                <div className="info">
+                  <img className="ava" id="oppAva" src={oppAvatar} alt={oppLabel} />
+                  <div className="text">
+                    <span className="name" id="oppName" title={oppLabel}>
+                      {oppLabel}
+                    </span>
+                    <span
+                      className="username"
+                      id="oppUsername"
+                      style={{ display: oppUsername ? "block" : "none" }}
+                    >
+                      {oppUsername}
+                    </span>
+                  </div>
+                </div>
+                <span className={`mark ${game?.you === "X" ? "o" : "x"}`} id="oppMark">
+                  {oppMark}
                 </span>
               </div>
             </div>
-            <span className={`mark ${game?.you === "X" ? "x" : "o"}`} id="youMark">
-              {youMark}
-            </span>
-          </div>
-          <div className="badge" id="oppBadge">
-            <div className="info">
-              <img className="ava" id="oppAva" src={oppAvatar} alt={oppLabel} />
-              <div className="text">
-                <span className="name" id="oppName" title={oppLabel}>
-                  {oppLabel}
-                </span>
-                <span
-                  className="username"
-                  id="oppUsername"
-                  style={{ display: oppUsername ? "block" : "none" }}
-                >
-                  {oppUsername}
-                </span>
-              </div>
-            </div>
-            <span className={`mark ${game?.you === "X" ? "o" : "x"}`} id="oppMark">
-              {oppMark}
-            </span>
-          </div>
-        </div>
 
         <div className={`status-line ${statusText?.blink ? "blink" : ""}`} id="status">
           {statusText?.text || "Готово"}
