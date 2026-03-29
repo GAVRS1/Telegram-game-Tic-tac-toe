@@ -32,6 +32,56 @@ const PORT = Number(process.env.PORT || 8080);
 const BOT_TOKEN = process.env.BOT_TOKEN || "";
 const SKIP_BOT = process.env.SKIP_BOT === "1";
 const PUBLIC_URL = (process.env.PUBLIC_URL || "").trim();
+const CORS_ORIGINS = (process.env.CORS_ORIGINS || "").trim();
+
+const parseCorsOrigins = (value) =>
+  value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+const allowedCorsOrigins = parseCorsOrigins(CORS_ORIGINS);
+
+const isLocalhostOrigin = (origin) => {
+  try {
+    const { hostname } = new URL(origin);
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+  } catch {
+    return false;
+  }
+};
+
+const originMatchesPattern = (origin, pattern) => {
+  if (!pattern) return false;
+  if (pattern === "*") return true;
+
+  try {
+    const originUrl = new URL(origin);
+    const patternUrl = new URL(pattern);
+
+    if (!patternUrl.hostname.startsWith("*.")) {
+      return originUrl.origin === patternUrl.origin;
+    }
+
+    if (originUrl.protocol !== patternUrl.protocol) return false;
+
+    const baseDomain = patternUrl.hostname.slice(2);
+    return (
+      originUrl.hostname === baseDomain ||
+      originUrl.hostname.endsWith(`.${baseDomain}`)
+    );
+  } catch {
+    return false;
+  }
+};
+
+const isAllowedCorsOrigin = (origin) => {
+  if (!origin) return true;
+
+  if (isLocalhostOrigin(origin)) return true;
+
+  return allowedCorsOrigins.some((pattern) => originMatchesPattern(origin, pattern));
+};
 
 const app = express();
 app.set("trust proxy", 1);
@@ -52,7 +102,12 @@ app.use(helmet({
     }
   }
 }));
-app.use(cors({ origin: false }));
+app.use(cors({
+  origin(origin, callback) {
+    if (isAllowedCorsOrigin(origin)) return callback(null, true);
+    return callback(new Error("CORS origin is not allowed"), false);
+  },
+}));
 app.use(loggingMiddleware);
 app.use(rateLimit({ windowMs: 60_000, max: 300 }));
 
