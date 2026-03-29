@@ -101,16 +101,44 @@ export function GameModesCarousel({ items, activeIndex, onChange }) {
                   }
                 }}
               >
-                <div className="mode-card__emoji" aria-hidden="true">{item.emoji}</div>
-                <div className="mode-card__title">{item.title}</div>
+                <div className="mode-card__media" aria-hidden="true">
+                  {item.image ? <img src={item.image} alt="" className="mode-card__image" /> : null}
+                </div>
+                <div className="mode-card__title-row">
+                  <div className="mode-card__title">{item.title}</div>
+                  {isActive ? <span className="mode-card__chip">Активно</span> : null}
+                </div>
                 <div className="mode-card__description">{item.description}</div>
                 {typeof item.renderExtra === "function" ? (
                   <div className="mode-card__extra">{item.renderExtra()}</div>
-                ) : null}
+                ) : (
+                  <div className="mode-card__extra">
+                    <button type="button" className="mode-card__cta" onClick={(event) => {
+                      event.stopPropagation();
+                      item.onSelect?.();
+                    }}>
+                      Выбрать режим
+                    </button>
+                  </div>
+                )}
               </article>
             );
           })}
         </div>
+      </div>
+      <div className="modes-carousel__dots" aria-hidden="true">
+        {items.map((item, index) => {
+          const active = index === activeIndex;
+          return (
+            <button
+              key={`dot-${item.id}`}
+              type="button"
+              className={`modes-carousel__dot ${active ? "is-active" : ""}`}
+              onClick={() => onChange(index)}
+              aria-label={`Перейти к режиму ${item.title}`}
+            />
+          );
+        })}
       </div>
     </section>
   );

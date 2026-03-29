@@ -50,6 +50,7 @@ body{
   height:100%;
   display:flex;
   flex-direction:column;
+  gap:12px;
 }
 .modes-carousel{
   position:relative;
@@ -63,46 +64,98 @@ body{
   display:flex;
   width:100%;
   height:100%;
-  transition:transform .28s ease;
+  transition:transform .45s cubic-bezier(.2,.8,.2,1);
 }
 .modes-carousel.is-dragging{
   cursor:grabbing;
 }
 .mode-card{
   flex:0 0 100%;
-  background:var(--card);
-  border:1px solid var(--line);
-  border-radius:18px;
-  padding:18px 16px;
-  min-height:100%;
+  margin:12px auto;
+  width:min(100%, 410px);
+  min-height:calc(100% - 24px);
+  background:linear-gradient(145deg, rgba(17,24,39,.94), rgba(10,14,25,.98));
+  border:1px solid rgba(86,104,131,.35);
+  border-radius:24px;
+  padding:14px;
   display:flex;
   flex-direction:column;
-  gap:10px;
+  gap:12px;
   justify-content:flex-start;
-  transition:transform .2s ease, opacity .2s ease, border-color .2s ease, box-shadow .2s ease, background .2s ease;
+  transition:transform .35s cubic-bezier(.2,.8,.2,1), opacity .25s ease, border-color .3s ease, box-shadow .3s ease, filter .3s ease;
   cursor:pointer;
+  position:relative;
+  overflow:hidden;
+}
+.mode-card::before{
+  content:"";
+  position:absolute;
+  inset:-80% auto auto -30%;
+  width:56%;
+  height:190%;
+  transform:rotate(24deg);
+  background:linear-gradient(180deg, rgba(148,163,184,.2), transparent 72%);
+  opacity:0;
+  transition:opacity .3s ease;
+  pointer-events:none;
+}
+.mode-card:hover::before{
+  opacity:.45;
 }
 .mode-card--active{
-  border-color:rgba(34,197,94,.52);
-  box-shadow:0 8px 24px rgba(0,0,0,.25), 0 0 0 1px rgba(34,197,94,.24);
-  transform:scale(1);
+  border-color:rgba(59,130,246,.75);
+  box-shadow:0 22px 42px rgba(0,0,0,.42), 0 0 0 1px rgba(34,197,94,.2);
+  transform:translateY(-2px) scale(1);
+  filter:saturate(1.08);
 }
 .mode-card--inactive{
-  opacity:.52;
-  transform:scale(.98);
+  opacity:.58;
+  transform:scale(.94);
+  filter:saturate(.78);
 }
-.mode-card__emoji{
-  font-size:28px;
-  line-height:1;
+.mode-card__media{
+  width:100%;
+  min-height:112px;
+  border-radius:16px;
+  border:1px dashed rgba(148,163,184,.45);
+  background:radial-gradient(circle at 15% 15%, rgba(59,130,246,.25), rgba(15,23,42,.95));
+  padding:14px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.mode-card__image{
+  width:min(120px, 45%);
+  max-height:76px;
+  object-fit:contain;
+  filter:drop-shadow(0 8px 18px rgba(0,0,0,.35));
+  transition:transform .3s ease;
+}
+.mode-card--active .mode-card__image{
+  animation:cardFloat 3s ease-in-out infinite;
+}
+.mode-card__title-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  justify-content:space-between;
 }
 .mode-card__title{
-  font-size:16px;
+  font-size:18px;
   font-weight:800;
+}
+.mode-card__chip{
+  font-size:11px;
+  padding:4px 8px;
+  border-radius:999px;
+  border:1px solid rgba(34,197,94,.35);
+  background:rgba(34,197,94,.14);
+  color:#bbf7d0;
 }
 .mode-card__description{
   font-size:13px;
   color:var(--muted);
-  line-height:1.35;
+  line-height:1.4;
 }
 .mode-card__extra{
   margin-top:auto;
@@ -110,6 +163,18 @@ body{
   flex-direction:column;
   gap:12px;
 }
+.mode-card__cta{
+  width:100%;
+  border:1px solid rgba(59,130,246,.45);
+  border-radius:14px;
+  background:linear-gradient(180deg, rgba(59,130,246,.27), rgba(30,64,175,.3));
+  color:#e2e8f0;
+  padding:11px 14px;
+  font-weight:700;
+  cursor:pointer;
+  transition:transform .18s ease, filter .18s ease;
+}
+.mode-card__cta:hover{transform:translateY(-1px); filter:brightness(1.08)}
 .mode-card__friend-actions{
   display:grid;
   grid-template-columns:repeat(2, minmax(0, 1fr));
@@ -124,6 +189,11 @@ body{
   color:var(--text);
   font-weight:700;
   cursor:pointer;
+  transition:transform .16s ease, box-shadow .2s ease, background .2s ease;
+}
+.mode-card__friend-button:hover{
+  transform:translateY(-1px);
+  box-shadow:0 8px 16px rgba(0,0,0,.25);
 }
 .mode-card__friend-button--alt{
   border-color:#334155;
@@ -146,6 +216,30 @@ body{
 .mode-card__friend-input:focus{
   border-color:rgba(96,165,250,.55);
   box-shadow:0 0 0 1px rgba(96,165,250,.28);
+}
+.modes-carousel__dots{
+  display:flex;
+  justify-content:center;
+  gap:8px;
+  margin-bottom:2px;
+}
+.modes-carousel__dot{
+  width:8px;
+  height:8px;
+  border-radius:999px;
+  border:none;
+  background:rgba(148,163,184,.38);
+  cursor:pointer;
+  transition:all .2s ease;
+}
+.modes-carousel__dot.is-active{
+  width:22px;
+  background:linear-gradient(90deg, #22c55e, #60a5fa);
+}
+
+@keyframes cardFloat{
+  0%,100%{transform:translateY(0)}
+  50%{transform:translateY(-4px)}
 }
 
 /* ====== КАРТОЧКА И ШАПКИ ИГРОКОВ ====== */
