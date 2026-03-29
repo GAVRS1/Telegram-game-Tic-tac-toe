@@ -14,6 +14,14 @@ Netlify хостит фронтенд (статический сайт). Ваш 
 - API: `https://api.example.com`
 - WebSocket: `wss://api.example.com`
 
+И задайте для backend переменную окружения CORS (CSV), чтобы разрешить Netlify-домены:
+
+```env
+CORS_ORIGINS=https://your-site.netlify.app,https://*.netlify.app
+```
+
+> `localhost`/`127.0.0.1` разрешаются автоматически для локальной разработки.
+
 ## 2) Подключите репозиторий в Netlify
 1. Зайдите в Netlify → **Add new site** → **Import an existing project**.
 2. Выберите GitHub/GitLab/Bitbucket и ваш репозиторий.
@@ -62,6 +70,6 @@ VITE_WS_URL=wss://api.example.com
 ```
 
 ## Частые проблемы
-- **Ошибка CORS**: разрешите домен Netlify в настройках backend CORS.
+- **Ошибка CORS**: проверьте `CORS_ORIGINS` на backend (например, `https://your-site.netlify.app,https://*.netlify.app`).
 - **WebSocket не подключается**: используйте именно `wss://` в production.
 - **404 при обновлении страницы**: уже решено через SPA-redirect в `netlify.toml`.

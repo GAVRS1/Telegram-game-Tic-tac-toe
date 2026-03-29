@@ -62,6 +62,7 @@
    - `PORT` — порт HTTP/WS (по умолчанию 8080);
    - `BOT_TOKEN` — токен Telegram-бота;
    - `PUBLIC_URL` — внешний URL для Web App (если отличается от локального);
+   - `CORS_ORIGINS` — CSV-список разрешённых Origin для backend API (поддерживаются маски вида `https://*.netlify.app`, localhost разрешён для dev автоматически), например: `https://app.example.com,https://*.netlify.app`;
    - параметры подключения к PostgreSQL (`DATABASE_URL` или `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`, `PGSSL`).
 4. Примените миграции: `npm run migrate` (создаст таблицы для пользователей, статистики и достижений).
 5. Запустите backend (из корня репозитория): `npm run start`.
