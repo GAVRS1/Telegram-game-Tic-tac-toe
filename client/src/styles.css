@@ -36,6 +36,100 @@ body{
   padding:calc(8px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) calc(var(--navbar-height) + 8px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));
 }
 
+/* ====== КАРУСЕЛЬ РЕЖИМОВ ====== */
+.modes-carousel-wrap{
+  width:100%;
+  max-width:520px;
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+}
+.modes-carousel{
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:10px;
+  touch-action:pan-y;
+  user-select:none;
+}
+.modes-carousel.is-dragging{
+  cursor:grabbing;
+}
+.mode-card{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:16px 12px;
+  min-height:170px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  justify-content:flex-start;
+  transition:transform .2s ease, opacity .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+.mode-card--active{
+  border-color:rgba(34,197,94,.52);
+  box-shadow:0 8px 24px rgba(0,0,0,.25), 0 0 0 1px rgba(34,197,94,.24);
+  transform:translateY(-2px);
+}
+.mode-card--inactive{
+  opacity:.66;
+}
+.mode-card__emoji{
+  font-size:28px;
+  line-height:1;
+}
+.mode-card__title{
+  font-size:16px;
+  font-weight:800;
+}
+.mode-card__description{
+  font-size:13px;
+  color:var(--muted);
+  line-height:1.35;
+}
+.modes-carousel__controls{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  align-items:center;
+}
+.modes-carousel__dots{
+  display:flex;
+  gap:8px;
+}
+.modes-carousel__dot{
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  border:0;
+  background:rgba(148,163,184,.45);
+  cursor:pointer;
+}
+.modes-carousel__dot.is-active{
+  width:24px;
+  border-radius:999px;
+  background:var(--accent);
+}
+.modes-carousel__action{
+  width:100%;
+  max-width:260px;
+  padding:12px 14px;
+  border-radius:14px;
+  border:1px solid #365b43;
+  background:rgba(34,197,94,.14);
+  color:var(--text);
+  font-weight:700;
+  cursor:pointer;
+}
+@media (max-width: 720px){
+  .modes-carousel{
+    grid-template-columns:1fr;
+  }
+  .mode-card{
+    min-height:180px;
+  }
+}
+
 /* ====== КАРТОЧКА И ШАПКИ ИГРОКОВ ====== */
 .wrap{
   width:100%;
