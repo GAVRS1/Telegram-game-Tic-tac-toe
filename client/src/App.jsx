@@ -464,7 +464,7 @@ export default function App() {
 
   const finishComputerGame = useCallback((result, board, line = null) => {
     setWinLine(line);
-    setNavMode("rematch");
+    setNavMode("find");
 
     let title = "Ничья 🤝";
     let text = "Матч с компьютером завершился ничьей.";
@@ -492,14 +492,14 @@ export default function App() {
       title,
       content: buildResultContent(text, phrasePool),
       primary: {
-        label: "Реванш",
+        label: "Сыграть ещё раз",
         onClick: () => {
           hideModal();
-          setScreen("modes");
+          startComputerGame();
         },
       },
       secondary: {
-        label: "Выйти",
+        label: "Назад в лобби",
         onClick: () => {
           hideModal();
           toLobby();
@@ -511,7 +511,7 @@ export default function App() {
     if (board) {
       setGame((prev) => ({ ...prev, board: board.slice(), turn: null }));
     }
-  }, [hideModal, setModal, toLobby]);
+  }, [hideModal, setModal, startComputerGame, toLobby]);
 
   const startComputerGame = useCallback(() => {
     const strategies = Object.keys(BOT_STRATEGIES);
@@ -534,7 +534,7 @@ export default function App() {
     setWinLine(null);
     setScreen("game");
     setNavMode("resign");
-    setStatus({ text: `Ваш ход • ИИ: ${BOT_STRATEGIES[strategy]}`, blink: false });
+    setStatus({ text: "Ваш ход • Компьютер", blink: false });
     setGame((prev) => ({
       ...prev,
       gameId: "local-bot",
@@ -543,13 +543,13 @@ export default function App() {
       board: Array(9).fill(null),
       opp: {
         id: "bot",
-        name: `Компьютер (${BOT_STRATEGIES[strategy]})`,
+        name: "Компьютер",
         username: "bot",
         avatar: "/img/logo.svg",
       },
       lastOpp: {
         id: "bot",
-        name: `Компьютер (${BOT_STRATEGIES[strategy]})`,
+        name: "Компьютер",
         username: "bot",
         avatar: "/img/logo.svg",
       },
@@ -648,7 +648,7 @@ export default function App() {
           return;
         }
 
-        setStatus({ text: `Ход компьютера • ИИ: ${BOT_STRATEGIES[botState.strategy]}`, blink: true });
+        setStatus({ text: "Ход компьютера", blink: true });
 
         if (botTimeoutRef.current) clearTimeout(botTimeoutRef.current);
         botTimeoutRef.current = setTimeout(() => {
@@ -683,7 +683,7 @@ export default function App() {
             return;
           }
 
-          setStatus({ text: `Ваш ход • ИИ: ${BOT_STRATEGIES[botState.strategy]}`, blink: false });
+          setStatus({ text: "Ваш ход • Компьютер", blink: false });
           audioManager.playMove();
         }, 450);
         return;
@@ -1553,7 +1553,7 @@ export default function App() {
       id: "computer",
       image: "/img/logo.svg",
       title: "Играть с компьютером",
-      description: "ИИ меняет стратегию: случайный, оборонительный или адаптивный.",
+      description: "Сыграйте против компьютера: разные стили игры в каждом матче.",
       onSelect: startComputerGame,
     },
   ];
