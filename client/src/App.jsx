@@ -148,6 +148,8 @@ export default function App() {
 
   const gameRef = useRef(game);
   const sendRef = useRef(() => {});
+  const wsConnectedRef = useRef(false);
+  const lastHelloFingerprintRef = useRef("");
   const pendingOppProfiles = useRef(new Set());
   const statsSystemRef = useRef(null);
   const mountedRef = useRef(true);
@@ -599,10 +601,20 @@ export default function App() {
       avatar: currentMe.avatar,
       initData: initData || telegram?.initData || "",
     };
+    const fingerprint = JSON.stringify(payload);
+    if (fingerprint === lastHelloFingerprintRef.current) return;
+    lastHelloFingerprintRef.current = fingerprint;
     sendWs(payload);
   }, [initData, sendWs, telegram]);
 
+  useEffect(() => {
+    if (!wsConnectedRef.current) return;
+    sendHello();
+  }, [initData, me.id, me.name, me.avatar, me.username, sendHello]);
+
   const onOpen = useCallback(() => {
+    wsConnectedRef.current = true;
+    lastHelloFingerprintRef.current = "";
     sendHello();
     setStatus({ text: "Онлайн: подключено", blink: false });
     setNavMode("find");
@@ -620,6 +632,8 @@ export default function App() {
   }, [notifications, pendingInviteCode, refreshIdentity, sendHello, sendWs]);
 
   const onClose = useCallback(() => {
+    wsConnectedRef.current = false;
+    lastHelloFingerprintRef.current = "";
     setStatus({ text: "Отключено. Переподключение…", blink: true });
     notifications.error("Соединение потеряно");
     setNavMode("find");
