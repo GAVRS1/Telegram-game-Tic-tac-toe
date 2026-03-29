@@ -14,9 +14,10 @@ const LABELS = {
   rematch: "Реванш",
 };
 
-export function Nav({ mode, onAction, onRating, onProfile, onInvite }) {
+export function Nav({ mode, onAction, onRating, onProfile, onInvite, hideLobbyActions = false }) {
   const label = LABELS[mode] || "Действие";
-  const canInvite = mode === "find" || mode === "waiting";
+  const canInvite = !hideLobbyActions && (mode === "find" || mode === "waiting");
+  const showCenterAction = !hideLobbyActions;
 
   return (
     <div className="navbar navbar--lg" id="navbar">
@@ -30,19 +31,21 @@ export function Nav({ mode, onAction, onRating, onProfile, onInvite }) {
           <div className="sym" aria-hidden="true" style={{ fontSize: "28px" }}>🔗</div>
         </button>
       ) : null}
-      <button
-        className={`navbtn centerAction ${mode === "waiting" ? "is-waiting" : ""} ${
-          mode === "resign" || mode === "rematch" ? "active" : ""
-        }`}
-        id="tabGame"
-        aria-label={label}
-        title={label}
-        onClick={() => onAction(mode)}
-      >
-        <div className="sym" id="centerSym">
-          <img src={ICONS[mode] || ICONS.find} alt="Действие" className="icon-lg" />
-        </div>
-      </button>
+      {showCenterAction ? (
+        <button
+          className={`navbtn centerAction ${mode === "waiting" ? "is-waiting" : ""} ${
+            mode === "resign" || mode === "rematch" ? "active" : ""
+          }`}
+          id="tabGame"
+          aria-label={label}
+          title={label}
+          onClick={() => onAction(mode)}
+        >
+          <div className="sym" id="centerSym">
+            <img src={ICONS[mode] || ICONS.find} alt="Действие" className="icon-lg" />
+          </div>
+        </button>
+      ) : null}
       <button className="navbtn" id="tabProfile" aria-label="Профиль" title="Профиль" onClick={onProfile}>
         <div className="sym">
           <img src="/img/profile-info.svg" alt="Профиль" className="icon" />

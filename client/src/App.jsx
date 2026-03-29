@@ -1301,6 +1301,7 @@ export default function App() {
   ];
 
   const shouldShowBoard = Boolean(game.gameId || screen === "game");
+  const isFriendsLobbyActive = !shouldShowBoard && modeCards[activeModeIndex]?.id === "friends";
 
   return (
     <div id="app">
@@ -1332,6 +1333,7 @@ export default function App() {
         onRating={loadRating}
         onProfile={loadProfile}
         onInvite={createInvite}
+        hideLobbyActions={isFriendsLobbyActive}
       />
       <Modal
         open={modalState.open}
