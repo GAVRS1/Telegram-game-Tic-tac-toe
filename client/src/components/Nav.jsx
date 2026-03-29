@@ -14,19 +14,12 @@ const LABELS = {
   rematch: "Реванш",
 };
 
-export function Nav({ mode, onAction, onRating, onProfile, onInvite, onlineStats }) {
+export function Nav({ mode, onAction, onRating, onProfile, onInvite }) {
   const label = LABELS[mode] || "Действие";
   const canInvite = mode === "find" || mode === "waiting";
-  const total = Number(onlineStats?.total ?? 0);
-  const verified = Number(onlineStats?.verified ?? 0);
-  const guest = Number(onlineStats?.guest ?? 0);
-  const statsText = `Онлайн: ${total} · Вериф.: ${verified} · Гости: ${guest}`;
 
   return (
     <div className="navbar navbar--lg" id="navbar">
-      <div className="online-stats" aria-live="polite">
-        {statsText}
-      </div>
       <button className="navbtn" id="tabRating" aria-label="Рейтинг" title="Рейтинг" onClick={onRating}>
         <div className="sym">
           <img src="/img/leaderboard.svg" alt="Рейтинг" className="icon" />

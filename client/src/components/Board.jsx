@@ -11,6 +11,7 @@ function buildUserLabel(user) {
 export function Board({
   me,
   game,
+  onlineStats,
   statusText,
   winLine,
   onCellClick,
@@ -31,16 +32,22 @@ export function Board({
 
   const youMark = game?.you || "—";
   const oppMark = game?.you ? (game.you === "X" ? "O" : "X") : "—";
+  const totalOnline = Number(onlineStats?.total ?? 0);
 
   return (
     <div className="wrap">
-      <button className="author-badge" type="button" title="Автор 0xGavrs" onClick={onAuthorClick}>
-        <img src="https://t.me/i/userpic/320/rsgavrs.jpg" alt="0xGavrs" loading="lazy" />
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", lineHeight: 1.2 }}>
-          <span>0xGavrs</span>
-          <small>Автор игры</small>
+      <div className="top-meta">
+        <button className="author-badge" type="button" title="Автор 0xGavrs" onClick={onAuthorClick}>
+          <img src="https://t.me/i/userpic/320/rsgavrs.jpg" alt="0xGavrs" loading="lazy" />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", lineHeight: 1.2 }}>
+            <span>0xGavrs</span>
+            <small>Автор игры</small>
+          </div>
+        </button>
+        <div className="online-stats online-stats--top" aria-live="polite">
+          Онлайн: {totalOnline}
         </div>
-      </button>
+      </div>
 
       <div className={`card ${modesLayout ? "card--modes" : ""}`}>
         {!modesLayout ? (

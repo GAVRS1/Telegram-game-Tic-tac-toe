@@ -1272,6 +1272,7 @@ export default function App() {
         <Board
           me={me}
           game={gameView}
+          onlineStats={onlineStats}
           statusText={status}
           winLine={winLine}
           onCellClick={handleCellClick}
@@ -1281,6 +1282,7 @@ export default function App() {
         <Board
           me={me}
           game={gameView}
+          onlineStats={onlineStats}
           statusText={status}
           onCellClick={handleCellClick}
           onAuthorClick={handleAuthorClick}
@@ -1294,7 +1296,6 @@ export default function App() {
         onRating={loadRating}
         onProfile={loadProfile}
         onInvite={createInvite}
-        onlineStats={onlineStats}
       />
       <Modal
         open={modalState.open}
