@@ -122,7 +122,7 @@ export function Board({
             )}
           </>
         ) : (
-          <div className="board-slot">{boardContent}</div>
+          <div className="board-slot board-slot--modes">{boardContent}</div>
         )}
       </div>
     </div>
