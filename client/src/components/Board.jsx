@@ -8,7 +8,16 @@ function buildUserLabel(user) {
   return "Player";
 }
 
-export function Board({ me, game, statusText, winLine, onCellClick, onAuthorClick }) {
+export function Board({
+  me,
+  game,
+  statusText,
+  winLine,
+  onCellClick,
+  onAuthorClick,
+  boardContent = null,
+  modesLayout = false,
+}) {
   const myName = me?.name?.trim() ? me.name : "Вы";
   const myUsername = me?.username?.trim() ? `@${me.username.replace(/^@/, "")}` : "";
   const myAvatar = me?.avatar || "/img/logo.svg";
@@ -33,68 +42,76 @@ export function Board({ me, game, statusText, winLine, onCellClick, onAuthorClic
         </div>
       </button>
 
-      <div className="card">
-        <div className="badges">
-          <div className="badge" id="youBadge">
-            <div className="info">
-              <img className="ava" id="youAva" src={myAvatar} alt={myName} />
-              <div className="text">
-                <span className="name" id="youName" title={buildUserLabel(me)}>
-                  {myName}
+      <div className={`card ${modesLayout ? "card--modes" : ""}`}>
+        {!modesLayout ? (
+          <>
+            <div className="badges">
+              <div className="badge" id="youBadge">
+                <div className="info">
+                  <img className="ava" id="youAva" src={myAvatar} alt={myName} />
+                  <div className="text">
+                    <span className="name" id="youName" title={buildUserLabel(me)}>
+                      {myName}
+                    </span>
+                    <span className="username" id="youUsername" style={{ display: myUsername ? "block" : "none" }}>
+                      {myUsername}
+                    </span>
+                  </div>
+                </div>
+                <span className={`mark ${game?.you === "X" ? "x" : "o"}`} id="youMark">
+                  {youMark}
                 </span>
-                <span className="username" id="youUsername" style={{ display: myUsername ? "block" : "none" }}>
-                  {myUsername}
+              </div>
+              <div className="badge" id="oppBadge">
+                <div className="info">
+                  <img className="ava" id="oppAva" src={oppAvatar} alt={oppLabel} />
+                  <div className="text">
+                    <span className="name" id="oppName" title={oppLabel}>
+                      {oppLabel}
+                    </span>
+                    <span
+                      className="username"
+                      id="oppUsername"
+                      style={{ display: oppUsername ? "block" : "none" }}
+                    >
+                      {oppUsername}
+                    </span>
+                  </div>
+                </div>
+                <span className={`mark ${game?.you === "X" ? "o" : "x"}`} id="oppMark">
+                  {oppMark}
                 </span>
               </div>
             </div>
-            <span className={`mark ${game?.you === "X" ? "x" : "o"}`} id="youMark">
-              {youMark}
-            </span>
-          </div>
-          <div className="badge" id="oppBadge">
-            <div className="info">
-              <img className="ava" id="oppAva" src={oppAvatar} alt={oppLabel} />
-              <div className="text">
-                <span className="name" id="oppName" title={oppLabel}>
-                  {oppLabel}
-                </span>
-                <span
-                  className="username"
-                  id="oppUsername"
-                  style={{ display: oppUsername ? "block" : "none" }}
-                >
-                  {oppUsername}
-                </span>
-              </div>
-            </div>
-            <span className={`mark ${game?.you === "X" ? "o" : "x"}`} id="oppMark">
-              {oppMark}
-            </span>
-          </div>
-        </div>
 
-        <div className={`status-line ${statusText?.blink ? "blink" : ""}`} id="status">
-          {statusText?.text || "Готово"}
-        </div>
-        <div className="board" id="board">
-          {game?.board?.map((value, index) => {
-            const isWin = Array.isArray(winLine) && winLine.includes(index);
-            const isDisabled = Boolean(value) || !game?.myMoveAllowed;
-            return (
-              <button
-                key={index}
-                type="button"
-                className={`cell${value ? ` ${value.toLowerCase()}` : ""}${isWin ? " win" : ""}${
-                  isDisabled ? " disabled" : ""
-                }`}
-                data-i={index}
-                onClick={() => onCellClick(index)}
-              >
-                {value || ""}
-              </button>
-            );
-          })}
-        </div>
+            <div className={`status-line ${statusText?.blink ? "blink" : ""}`} id="status">
+              {statusText?.text || "Готово"}
+            </div>
+          </>
+        ) : null}
+        {boardContent ? (
+          <div className="board-slot">{boardContent}</div>
+        ) : (
+          <div className="board" id="board">
+            {game?.board?.map((value, index) => {
+              const isWin = Array.isArray(winLine) && winLine.includes(index);
+              const isDisabled = Boolean(value) || !game?.myMoveAllowed;
+              return (
+                <button
+                  key={index}
+                  type="button"
+                  className={`cell${value ? ` ${value.toLowerCase()}` : ""}${isWin ? " win" : ""}${
+                    isDisabled ? " disabled" : ""
+                  }`}
+                  data-i={index}
+                  onClick={() => onCellClick(index)}
+                >
+                  {value || ""}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

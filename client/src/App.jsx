@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Board } from "./components/Board.jsx";
+import { GameModesCarousel } from "./components/GameModesCarousel.jsx";
 import { Nav } from "./components/Nav.jsx";
 import { Modal } from "./components/Modal.jsx";
 import { Notifications } from "./components/Notifications.jsx";
@@ -132,6 +133,8 @@ export default function App() {
   const { telegram, initData, me, refreshIdentity, meRef } = useTelegramAuth();
   const [game, setGame] = useState(initialGameState);
   const [status, setStatus] = useState({ text: "Готово", blink: false });
+  const [screen, setScreen] = useState("modes");
+  const [activeModeIndex, setActiveModeIndex] = useState(0);
   const [navMode, setNavMode] = useState("find");
   const [onlineStats, setOnlineStats] = useState({ total: 0, verified: 0, guest: 0 });
   const [modalState, setModalState] = useState({
@@ -151,6 +154,7 @@ export default function App() {
   const wsConnectedRef = useRef(false);
   const lastHelloFingerprintRef = useRef("");
   const pendingOppProfiles = useRef(new Set());
+  const pendingInviteShareModeRef = useRef("link");
   const statsSystemRef = useRef(null);
   const mountedRef = useRef(true);
 
@@ -205,7 +209,9 @@ export default function App() {
     [notifications, telegram]
   );
 
-  const createInvite = useCallback(() => {
+  const createInvite = useCallback(({ share = "link" } = {}) => {
+    pendingInviteShareModeRef.current = share;
+    setScreen("game");
     sendWs({ t: "invite.create" });
     setStatus({ text: "Создаём ссылку приглашения…", blink: true });
     audioManager.playClick();
@@ -221,6 +227,7 @@ export default function App() {
 
   const startQueueSearch = useCallback(
     ({ notify = true, playSound = true } = {}) => {
+      setScreen("game");
       sendWs({ t: "queue.join" });
       setNavMode("waiting");
       setStatus({ text: "Поиск соперника…", blink: true });
@@ -233,6 +240,7 @@ export default function App() {
   const cancelQueueSearch = useCallback(
     ({ notify = true, playSound = true } = {}) => {
       sendWs({ t: "queue.leave" });
+      if (!gameRef.current.gameId) setScreen("modes");
       setNavMode("find");
       setStatus({ text: "Готово", blink: false });
       if (notify) notifications.info("Поиск остановлен");
@@ -273,9 +281,27 @@ export default function App() {
     }));
     setWinLine(null);
     hideModal();
+    setScreen("modes");
     setStatus({ text: "Готово", blink: false });
     sendWs({ t: "queue.leave" });
   }, [hideModal, sendWs]);
+
+  const handlePlayOnline = useCallback(() => {
+    startQueueSearch();
+  }, [startQueueSearch]);
+
+  const openComputerStub = useCallback(() => {
+    setScreen("game");
+    setModal({
+      title: "Играть с компьютером",
+      content: "Режим против бота скоро появится. Пока доступна игра онлайн и с друзьями.",
+      primary: {
+        label: "Ок",
+        onClick: () => hideModal(),
+      },
+      secondary: { show: false },
+    });
+  }, [hideModal, setModal]);
 
   const declineRematch = useCallback(
     (fromId) => {
@@ -656,6 +682,7 @@ export default function App() {
       }
 
       if (msg.t === "game.start") {
+        setScreen("game");
         setPendingInviteCode("");
         if (typeof window !== "undefined") {
           const url = new URL(window.location.href);
@@ -729,6 +756,7 @@ export default function App() {
 
       if (msg.t === "queue.left") {
         if (!gameRef.current.gameId) {
+          setScreen("modes");
           setNavMode("find");
           setStatus({ text: "Готово", blink: false });
         }
@@ -743,7 +771,21 @@ export default function App() {
 
       if (msg.t === "invite.created") {
         setStatus({ text: "Ссылка приглашения создана", blink: false });
-        shareInviteLink(msg.link);
+        const shareMode = pendingInviteShareModeRef.current;
+        pendingInviteShareModeRef.current = "link";
+
+        if (shareMode === "code") {
+          const inviteCode = typeof msg.code === "string" ? msg.code.trim() : "";
+          if (inviteCode) {
+            navigator.clipboard?.writeText(inviteCode)
+              .then(() => notifications.success("Код лобби скопирован"))
+              .catch(() => notifications.info(`Код лобби: ${inviteCode}`));
+          } else {
+            notifications.error("Не удалось получить код лобби");
+          }
+        } else {
+          shareInviteLink(msg.link);
+        }
         return;
       }
 
@@ -1087,6 +1129,32 @@ export default function App() {
     myMoveAllowed: Boolean(game.you && game.you === game.turn && game.gameId),
   };
 
+  const modeCards = [
+    {
+      id: "online",
+      emoji: "🌐",
+      title: "Играть онлайн",
+      description: "Быстрый матч через общую очередь игроков.",
+      onCardClick: handlePlayOnline,
+    },
+    {
+      id: "friends",
+      emoji: "🧑‍🤝‍🧑",
+      title: "Играть с друзьями",
+      description: "Создайте лобби или подключитесь по коду приглашения.",
+      renderBody: "friends",
+    },
+    {
+      id: "computer",
+      emoji: "🤖",
+      title: "Играть с компьютером",
+      description: "Режим против бота (временная заглушка).",
+      onCardClick: openComputerStub,
+    },
+  ];
+
+  const isModesScreen = !game.gameId && screen === "modes";
+
   return (
     <div id="app">
       <Board
@@ -1096,6 +1164,25 @@ export default function App() {
         winLine={winLine}
         onCellClick={handleCellClick}
         onAuthorClick={handleAuthorClick}
+        modesLayout={isModesScreen}
+        boardContent={
+          isModesScreen ? (
+            <GameModesCarousel
+              items={modeCards}
+              activeIndex={activeModeIndex}
+              onChange={setActiveModeIndex}
+              friendsActions={{
+                onCreate: () => createInvite({ share: "code" }),
+                onJoin: (code) => {
+                  sendWs({ t: "invite.accept", code });
+                  setScreen("game");
+                  setStatus({ text: "Подключаем к лобби друга…", blink: true });
+                  audioManager.playClick();
+                },
+              }}
+            />
+          ) : null
+        }
       />
       <Nav
         mode={navMode}
