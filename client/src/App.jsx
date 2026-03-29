@@ -31,6 +31,23 @@ const DRAW_PHRASES = [
   "Ни шагу назад! Равная борьба до конца 💫",
 ];
 
+const WIN_LINES = [
+  [0, 1, 2],
+  [3, 4, 5],
+  [6, 7, 8],
+  [0, 3, 6],
+  [1, 4, 7],
+  [2, 5, 8],
+  [0, 4, 8],
+  [2, 4, 6],
+];
+
+const BOT_STRATEGIES = {
+  random: "Случайный",
+  defensive: "Оборонительный",
+  adaptive: "Адаптивный",
+};
+
 const initialGameState = {
   gameId: null,
   you: null,
@@ -38,6 +55,14 @@ const initialGameState = {
   board: Array(9).fill(null),
   opp: null,
   lastOpp: null,
+};
+
+const initialBotState = {
+  active: false,
+  strategy: "random",
+  playerMark: "X",
+  botMark: "O",
+  playerMoves: [],
 };
 
 function pick(arr) {
@@ -55,6 +80,64 @@ function buildResultContent(baseText, phrasesPool) {
   const extra = Array.isArray(phrasesPool) && phrasesPool.length ? pick(phrasesPool) : null;
   if (extra) blocks.push(<p key="extra" className="modal-phrase">{extra}</p>);
   return blocks;
+}
+
+function getWinner(board) {
+  for (const line of WIN_LINES) {
+    const [a, b, c] = line;
+    if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+      return { mark: board[a], line };
+    }
+  }
+
+  if (board.every(Boolean)) return { mark: null, line: null };
+  return null;
+}
+
+function getFinishingMove(board, mark) {
+  for (const line of WIN_LINES) {
+    const values = line.map((index) => board[index]);
+    const markCount = values.filter((value) => value === mark).length;
+    const emptyIndex = line.find((index) => !board[index]);
+    if (markCount === 2 && emptyIndex !== undefined) return emptyIndex;
+  }
+  return null;
+}
+
+function pickRandomMove(board) {
+  const free = board.map((value, index) => (!value ? index : null)).filter((value) => value !== null);
+  if (!free.length) return null;
+  return free[Math.floor(Math.random() * free.length)];
+}
+
+function pickAdaptiveMove(board, playerMoves, botMark, playerMark) {
+  const center = 4;
+  if (!board[center]) return center;
+
+  const corners = [0, 2, 6, 8];
+  const sideCells = [1, 3, 5, 7];
+
+  const lastPlayerMove = playerMoves[playerMoves.length - 1];
+  if (lastPlayerMove === center) {
+    const freeCorner = corners.find((index) => !board[index]);
+    if (freeCorner !== undefined) return freeCorner;
+  }
+
+  const oppositeCornerMap = { 0: 8, 2: 6, 6: 2, 8: 0 };
+  for (const move of playerMoves) {
+    const opposite = oppositeCornerMap[move];
+    if (typeof opposite === "number" && !board[opposite]) return opposite;
+  }
+
+  for (const corner of corners) {
+    if (!board[corner]) return corner;
+  }
+
+  for (const side of sideCells) {
+    if (!board[side]) return side;
+  }
+
+  return getFinishingMove(board, botMark) ?? getFinishingMove(board, playerMark) ?? pickRandomMove(board);
 }
 
 function needsOpponentDetails(opp) {
@@ -173,6 +256,7 @@ export default function App() {
   const [pendingInviteCode, setPendingInviteCode] = useState(() => {
     return resolveInviteCodeFromLocation();
   });
+  const [botState, setBotState] = useState(initialBotState);
 
   const gameRef = useRef(game);
   const sendRef = useRef(() => {});
@@ -182,6 +266,7 @@ export default function App() {
   const pendingInviteShareModeRef = useRef("link");
   const statsSystemRef = useRef(null);
   const mountedRef = useRef(true);
+  const botTimeoutRef = useRef(null);
 
   const notifications = useNotifications();
 
@@ -189,6 +274,10 @@ export default function App() {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      if (botTimeoutRef.current) {
+        clearTimeout(botTimeoutRef.current);
+        botTimeoutRef.current = null;
+      }
     };
   }, []);
 
@@ -331,6 +420,10 @@ export default function App() {
   );
 
   const toLobby = useCallback(() => {
+    if (botTimeoutRef.current) {
+      clearTimeout(botTimeoutRef.current);
+      botTimeoutRef.current = null;
+    }
     setGame((prev) => ({
       ...prev,
       gameId: null,
@@ -339,6 +432,7 @@ export default function App() {
       board: Array(9).fill(null),
       opp: null,
     }));
+    setBotState(initialBotState);
     setWinLine(null);
     hideModal();
     setScreen("modes");
@@ -368,18 +462,99 @@ export default function App() {
     audioManager.playClick();
   }, [friendInviteInput, notifications, sendWs]);
 
-  const openComputerStub = useCallback(() => {
-    setScreen("game");
+  const finishComputerGame = useCallback((result, board, line = null) => {
+    setWinLine(line);
+    setNavMode("rematch");
+
+    let title = "Ничья 🤝";
+    let text = "Матч с компьютером завершился ничьей.";
+    let phrasePool = DRAW_PHRASES;
+    let statusText = "Ничья";
+
+    if (result === "win") {
+      title = "Победа 🎉";
+      text = "Вы обыграли компьютер.";
+      phrasePool = WIN_PHRASES;
+      statusText = "Победа!";
+      audioManager.playWin();
+    } else if (result === "lose") {
+      title = "Поражение 😔";
+      text = "Компьютер оказался сильнее.";
+      phrasePool = LOSE_PHRASES;
+      statusText = "Поражение";
+      audioManager.playLose();
+    } else {
+      audioManager.playDraw();
+    }
+
+    setStatus({ text: statusText, blink: false });
     setModal({
-      title: "Играть с компьютером",
-      content: "Режим против бота скоро появится. Пока доступна игра онлайн и с друзьями.",
+      title,
+      content: buildResultContent(text, phrasePool),
       primary: {
-        label: "Ок",
-        onClick: () => hideModal(),
+        label: "Реванш",
+        onClick: () => {
+          hideModal();
+          setScreen("modes");
+        },
       },
-      secondary: { show: false },
+      secondary: {
+        label: "Выйти",
+        onClick: () => {
+          hideModal();
+          toLobby();
+          setBotState(initialBotState);
+        },
+      },
     });
-  }, [hideModal, setModal]);
+
+    if (board) {
+      setGame((prev) => ({ ...prev, board: board.slice(), turn: null }));
+    }
+  }, [hideModal, setModal, toLobby]);
+
+  const startComputerGame = useCallback(() => {
+    const strategies = Object.keys(BOT_STRATEGIES);
+    const strategy = strategies[Math.floor(Math.random() * strategies.length)] || "random";
+    const playerMark = "X";
+    const botMark = "O";
+
+    if (botTimeoutRef.current) {
+      clearTimeout(botTimeoutRef.current);
+      botTimeoutRef.current = null;
+    }
+
+    setBotState({
+      active: true,
+      strategy,
+      playerMark,
+      botMark,
+      playerMoves: [],
+    });
+    setWinLine(null);
+    setScreen("game");
+    setNavMode("resign");
+    setStatus({ text: `Ваш ход • ИИ: ${BOT_STRATEGIES[strategy]}`, blink: false });
+    setGame((prev) => ({
+      ...prev,
+      gameId: "local-bot",
+      you: playerMark,
+      turn: playerMark,
+      board: Array(9).fill(null),
+      opp: {
+        id: "bot",
+        name: `Компьютер (${BOT_STRATEGIES[strategy]})`,
+        username: "bot",
+        avatar: "/img/logo.svg",
+      },
+      lastOpp: {
+        id: "bot",
+        name: `Компьютер (${BOT_STRATEGIES[strategy]})`,
+        username: "bot",
+        avatar: "/img/logo.svg",
+      },
+    }));
+  }, []);
 
   const declineRematch = useCallback(
     (fromId) => {
@@ -393,13 +568,27 @@ export default function App() {
 
   const onNavAction = useCallback(
     (mode) => {
+      const localBotActive = botState.active;
       if (mode === "find") {
+        if (localBotActive) {
+          startComputerGame();
+          return;
+        }
         startQueueSearch();
       }
       if (mode === "waiting") {
+        if (localBotActive) {
+          toLobby();
+          setBotState(initialBotState);
+          return;
+        }
         cancelQueueSearch();
       }
       if (mode === "resign") {
+        if (localBotActive) {
+          finishComputerGame("lose", gameRef.current.board);
+          return;
+        }
         if (gameRef.current.gameId) {
           setModal({
             title: "Сдаться?",
@@ -422,15 +611,84 @@ export default function App() {
           });
         }
       }
-      if (mode === "rematch") inviteLastOpponent();
+      if (mode === "rematch") {
+        if (localBotActive) {
+          startComputerGame();
+          return;
+        }
+        inviteLastOpponent();
+      }
     },
-    [cancelQueueSearch, hideModal, inviteLastOpponent, sendWs, setModal, startQueueSearch]
+    [botState.active, cancelQueueSearch, finishComputerGame, hideModal, inviteLastOpponent, sendWs, setModal, startComputerGame, startQueueSearch, toLobby]
   );
 
   const handleCellClick = useCallback(
     (index) => {
       const currentGame = gameRef.current;
       if (!currentGame.gameId) return;
+
+      if (botState.active) {
+        const board = Array.isArray(currentGame.board) ? currentGame.board.slice() : Array(9).fill(null);
+        if (currentGame.turn !== botState.playerMark || board[index]) return;
+
+        vibrate(10);
+        audioManager.playClick();
+        board[index] = botState.playerMark;
+        const nextPlayerMoves = [...botState.playerMoves, index];
+        setBotState((prev) => ({ ...prev, playerMoves: nextPlayerMoves }));
+        setGame((prev) => ({ ...prev, board: board.slice(), turn: botState.botMark }));
+
+        const playerResult = getWinner(board);
+        if (playerResult) {
+          if (playerResult.mark === botState.playerMark) {
+            finishComputerGame("win", board, playerResult.line);
+          } else {
+            finishComputerGame("draw", board, null);
+          }
+          return;
+        }
+
+        setStatus({ text: `Ход компьютера • ИИ: ${BOT_STRATEGIES[botState.strategy]}`, blink: true });
+
+        if (botTimeoutRef.current) clearTimeout(botTimeoutRef.current);
+        botTimeoutRef.current = setTimeout(() => {
+          const currentBoard = gameRef.current.board.slice();
+          if (!botState.active || gameRef.current.turn !== botState.botMark) return;
+
+          let botMove = null;
+          if (botState.strategy === "defensive") {
+            botMove = getFinishingMove(currentBoard, botState.botMark)
+              ?? getFinishingMove(currentBoard, botState.playerMark)
+              ?? pickRandomMove(currentBoard);
+          } else if (botState.strategy === "adaptive") {
+            botMove = getFinishingMove(currentBoard, botState.botMark)
+              ?? getFinishingMove(currentBoard, botState.playerMark)
+              ?? pickAdaptiveMove(currentBoard, nextPlayerMoves, botState.botMark, botState.playerMark);
+          } else {
+            botMove = pickRandomMove(currentBoard);
+          }
+
+          if (botMove === null || botMove === undefined) {
+            finishComputerGame("draw", currentBoard, null);
+            return;
+          }
+
+          currentBoard[botMove] = botState.botMark;
+          setGame((prev) => ({ ...prev, board: currentBoard.slice(), turn: botState.playerMark }));
+
+          const botResult = getWinner(currentBoard);
+          if (botResult) {
+            if (botResult.mark === botState.botMark) finishComputerGame("lose", currentBoard, botResult.line);
+            else finishComputerGame("draw", currentBoard, null);
+            return;
+          }
+
+          setStatus({ text: `Ваш ход • ИИ: ${BOT_STRATEGIES[botState.strategy]}`, blink: false });
+          audioManager.playMove();
+        }, 450);
+        return;
+      }
+
       const myMoveAllowed = currentGame.you && currentGame.you === currentGame.turn && currentGame.gameId;
       if (!myMoveAllowed || currentGame.board[index]) return;
 
@@ -439,7 +697,7 @@ export default function App() {
       statsSystemRef.current?.recordMove(index);
       sendWs({ t: "game.move", gameId: currentGame.gameId, i: index });
     },
-    [sendWs]
+    [botState, finishComputerGame, sendWs]
   );
 
   const handleAuthorClick = useCallback(() => {
@@ -1295,8 +1553,8 @@ export default function App() {
       id: "computer",
       image: "/img/logo.svg",
       title: "Играть с компьютером",
-      description: "Режим против бота (временная заглушка).",
-      onSelect: openComputerStub,
+      description: "ИИ меняет стратегию: случайный, оборонительный или адаптивный.",
+      onSelect: startComputerGame,
     },
   ];
 
