@@ -243,6 +243,7 @@ export default function App() {
   const [activeModeIndex, setActiveModeIndex] = useState(0);
   const [friendInviteInputVisible, setFriendInviteInputVisible] = useState(false);
   const [friendInviteInput, setFriendInviteInput] = useState("");
+  const [lobbyInviteCode, setLobbyInviteCode] = useState("");
   const [navMode, setNavMode] = useState("find");
   const [onlineStats, setOnlineStats] = useState({ total: 0, verified: 0, guest: 0 });
   const [modalState, setModalState] = useState({
@@ -360,6 +361,7 @@ export default function App() {
   );
 
   const createInvite = useCallback(() => {
+    setLobbyInviteCode("");
     setScreen("game");
     sendWs({ t: "invite.create" });
     setStatus({ text: "Создаём ссылку приглашения…", blink: true });
@@ -437,6 +439,7 @@ export default function App() {
     hideModal();
     setScreen("modes");
     setStatus({ text: "Готово", blink: false });
+    setLobbyInviteCode("");
     sendWs({ t: "queue.leave" });
   }, [hideModal, sendWs]);
 
@@ -464,7 +467,7 @@ export default function App() {
 
   const finishComputerGame = useCallback((result, board, line = null) => {
     setWinLine(line);
-    setNavMode("rematch");
+    setNavMode("find");
 
     let title = "Ничья 🤝";
     let text = "Матч с компьютером завершился ничьей.";
@@ -492,7 +495,7 @@ export default function App() {
       title,
       content: buildResultContent(text, phrasePool),
       primary: {
-        label: "Реванш",
+        label: "Сыграть снова",
         onClick: () => {
           hideModal();
           setScreen("modes");
@@ -534,7 +537,7 @@ export default function App() {
     setWinLine(null);
     setScreen("game");
     setNavMode("resign");
-    setStatus({ text: `Ваш ход • ИИ: ${BOT_STRATEGIES[strategy]}`, blink: false });
+    setStatus({ text: "Ваш ход", blink: false });
     setGame((prev) => ({
       ...prev,
       gameId: "local-bot",
@@ -543,13 +546,13 @@ export default function App() {
       board: Array(9).fill(null),
       opp: {
         id: "bot",
-        name: `Компьютер (${BOT_STRATEGIES[strategy]})`,
+        name: "Компьютер",
         username: "bot",
         avatar: "/img/logo.svg",
       },
       lastOpp: {
         id: "bot",
-        name: `Компьютер (${BOT_STRATEGIES[strategy]})`,
+        name: "Компьютер",
         username: "bot",
         avatar: "/img/logo.svg",
       },
@@ -648,7 +651,7 @@ export default function App() {
           return;
         }
 
-        setStatus({ text: `Ход компьютера • ИИ: ${BOT_STRATEGIES[botState.strategy]}`, blink: true });
+        setStatus({ text: "Ход компьютера", blink: true });
 
         if (botTimeoutRef.current) clearTimeout(botTimeoutRef.current);
         botTimeoutRef.current = setTimeout(() => {
@@ -683,7 +686,7 @@ export default function App() {
             return;
           }
 
-          setStatus({ text: `Ваш ход • ИИ: ${BOT_STRATEGIES[botState.strategy]}`, blink: false });
+          setStatus({ text: "Ваш ход", blink: false });
           audioManager.playMove();
         }, 450);
         return;
@@ -1153,6 +1156,7 @@ export default function App() {
         if (shareMode === "code") {
           const inviteCode = typeof msg.code === "string" ? msg.code.trim() : "";
           if (inviteCode) {
+            setLobbyInviteCode(inviteCode);
             navigator.clipboard?.writeText(inviteCode)
               .then(() => notifications.success("Код лобби скопирован"))
               .catch(() => notifications.info(`Код лобби: ${inviteCode}`));
@@ -1171,6 +1175,7 @@ export default function App() {
       }
 
       if (msg.t === "invite.connected") {
+        setLobbyInviteCode("");
         notifications.success("Игрок по приглашению подключился");
         setStatus({ text: "Игрок найден по приглашению", blink: false });
         return;
@@ -1512,6 +1517,35 @@ export default function App() {
       title: "Играть онлайн",
       description: "Быстрый матч через общую очередь игроков.",
       onSelect: handlePlayOnline,
+      renderExtra: () => (
+        <div className="mode-card__friend-actions" onClick={(event) => event.stopPropagation()}>
+          <button type="button" className="mode-card__friend-button" onClick={createFriendsLobby}>
+            Создать
+          </button>
+          {friendInviteInputVisible ? (
+            <div className="mode-card__friend-join">
+              <input
+                className="mode-card__friend-input"
+                value={friendInviteInput}
+                onChange={(event) => setFriendInviteInput(event.target.value)}
+                placeholder="Введите инвайт-код"
+                autoFocus
+              />
+              <button type="button" className="mode-card__friend-button mode-card__friend-button--alt" onClick={joinFriendsLobby}>
+                Войти
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="mode-card__friend-button mode-card__friend-button--alt"
+              onClick={() => setFriendInviteInputVisible(true)}
+            >
+              Присоединиться
+            </button>
+          )}
+        </div>
+      ),
     },
     {
       id: "friends",
@@ -1553,13 +1587,42 @@ export default function App() {
       id: "computer",
       image: "/img/logo.svg",
       title: "Играть с компьютером",
-      description: "ИИ меняет стратегию: случайный, оборонительный или адаптивный.",
+      description: "Сыграйте матч против компьютера.",
       onSelect: startComputerGame,
+      renderExtra: () => (
+        <div className="mode-card__friend-actions" onClick={(event) => event.stopPropagation()}>
+          <button type="button" className="mode-card__friend-button" onClick={createFriendsLobby}>
+            Создать
+          </button>
+          {friendInviteInputVisible ? (
+            <div className="mode-card__friend-join">
+              <input
+                className="mode-card__friend-input"
+                value={friendInviteInput}
+                onChange={(event) => setFriendInviteInput(event.target.value)}
+                placeholder="Введите инвайт-код"
+                autoFocus
+              />
+              <button type="button" className="mode-card__friend-button mode-card__friend-button--alt" onClick={joinFriendsLobby}>
+                Войти
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="mode-card__friend-button mode-card__friend-button--alt"
+              onClick={() => setFriendInviteInputVisible(true)}
+            >
+              Присоединиться
+            </button>
+          )}
+        </div>
+      ),
     },
   ];
 
   const shouldShowBoard = Boolean(game.gameId || screen === "game");
-  const isFriendsLobbyActive = !shouldShowBoard && modeCards[activeModeIndex]?.id === "friends";
+  const isLobbyScreen = !shouldShowBoard;
 
   return (
     <div id="app">
@@ -1572,6 +1635,13 @@ export default function App() {
           winLine={winLine}
           onCellClick={handleCellClick}
           onAuthorClick={handleAuthorClick}
+          lobbyInviteCode={lobbyInviteCode}
+          onInviteCodeClick={() => {
+            if (!lobbyInviteCode) return;
+            navigator.clipboard?.writeText(lobbyInviteCode)
+              .then(() => notifications.success("Код лобби скопирован"))
+              .catch(() => notifications.info(`Код лобби: ${lobbyInviteCode}`));
+          }}
         />
       ) : (
         <Board
@@ -1581,6 +1651,13 @@ export default function App() {
           statusText={status}
           onCellClick={handleCellClick}
           onAuthorClick={handleAuthorClick}
+          lobbyInviteCode={lobbyInviteCode}
+          onInviteCodeClick={() => {
+            if (!lobbyInviteCode) return;
+            navigator.clipboard?.writeText(lobbyInviteCode)
+              .then(() => notifications.success("Код лобби скопирован"))
+              .catch(() => notifications.info(`Код лобби: ${lobbyInviteCode}`));
+          }}
           modesLayout
           boardContent={<GameModesCarousel items={modeCards} activeIndex={activeModeIndex} onChange={setActiveModeIndex} />}
         />
@@ -1591,7 +1668,7 @@ export default function App() {
         onRating={loadRating}
         onProfile={loadProfile}
         onInvite={createInvite}
-        hideLobbyActions={isFriendsLobbyActive}
+        hideLobbyActions={isLobbyScreen}
       />
       <Modal
         open={modalState.open}

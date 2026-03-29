@@ -18,6 +18,8 @@ export function Board({
   onAuthorClick,
   boardContent = null,
   modesLayout = false,
+  lobbyInviteCode = "",
+  onInviteCodeClick,
 }) {
   const myName = me?.name?.trim() ? me.name : "Вы";
   const myUsername = me?.username?.trim() ? `@${me.username.replace(/^@/, "")}` : "";
@@ -44,6 +46,12 @@ export function Board({
             <small>Автор игры</small>
           </div>
         </button>
+        {lobbyInviteCode ? (
+          <button className="lobby-code" type="button" onClick={onInviteCodeClick} title="Нажмите, чтобы скопировать код">
+            <small>Инвайт-код</small>
+            <span>{lobbyInviteCode}</span>
+          </button>
+        ) : null}
         <div className="online-stats online-stats--top" aria-live="polite">
           Онлайн: {totalOnline}
         </div>
