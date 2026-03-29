@@ -135,6 +135,8 @@ export default function App() {
   const [status, setStatus] = useState({ text: "Готово", blink: false });
   const [screen, setScreen] = useState("modes");
   const [activeModeIndex, setActiveModeIndex] = useState(0);
+  const [friendInviteInputVisible, setFriendInviteInputVisible] = useState(false);
+  const [friendInviteInput, setFriendInviteInput] = useState("");
   const [navMode, setNavMode] = useState("find");
   const [onlineStats, setOnlineStats] = useState({ total: 0, verified: 0, guest: 0 });
   const [modalState, setModalState] = useState({
@@ -289,34 +291,23 @@ export default function App() {
     startQueueSearch();
   }, [startQueueSearch]);
 
-  const openFriendsModal = useCallback(() => {
-    setScreen("game");
-    setModal({
-      title: "Играть с друзьями",
-      content: "Выберите: создать новое лобби или войти по коду приглашения друга.",
-      primary: {
-        label: "Создать лобби",
-        onClick: () => {
-          hideModal();
-          createInvite();
-        },
-      },
-      secondary: {
-        label: "Ввести код",
-        onClick: () => {
-          const code = window.prompt("Введите код приглашения")?.trim();
-          if (!code) {
-            notifications.info("Введите код приглашения");
-            return;
-          }
-          sendWs({ t: "invite.accept", code });
-          setStatus({ text: "Подключаем к лобби друга…", blink: true });
-          hideModal();
-          audioManager.playClick();
-        },
-      },
-    });
-  }, [createInvite, hideModal, notifications, sendWs, setModal]);
+  const createFriendsLobby = useCallback(() => {
+    pendingInviteShareModeRef.current = "code";
+    setFriendInviteInputVisible(false);
+    setFriendInviteInput("");
+    createInvite();
+  }, [createInvite]);
+
+  const joinFriendsLobby = useCallback(() => {
+    const code = friendInviteInput.trim();
+    if (!code) {
+      notifications.info("Введите код приглашения");
+      return;
+    }
+    sendWs({ t: "invite.accept", code });
+    setStatus({ text: "Подключаем к лобби друга…", blink: true });
+    audioManager.playClick();
+  }, [friendInviteInput, notifications, sendWs]);
 
   const openComputerStub = useCallback(() => {
     setScreen("game");
@@ -1163,7 +1154,6 @@ export default function App() {
       emoji: "🌐",
       title: "Играть онлайн",
       description: "Быстрый матч через общую очередь игроков.",
-      cta: "Встать в очередь",
       onSelect: handlePlayOnline,
     },
     {
@@ -1171,15 +1161,42 @@ export default function App() {
       emoji: "🧑‍🤝‍🧑",
       title: "Играть с друзьями",
       description: "Создайте лобби или подключитесь по коду приглашения.",
-      cta: "Открыть лобби",
-      onSelect: openFriendsModal,
+      onSelect: null,
+      renderExtra: () => (
+        <div className="mode-card__friend-actions" onClick={(event) => event.stopPropagation()}>
+          <button type="button" className="mode-card__friend-button" onClick={createFriendsLobby}>
+            Создать
+          </button>
+          {friendInviteInputVisible ? (
+            <div className="mode-card__friend-join">
+              <input
+                className="mode-card__friend-input"
+                value={friendInviteInput}
+                onChange={(event) => setFriendInviteInput(event.target.value)}
+                placeholder="Введите инвайт-код"
+                autoFocus
+              />
+              <button type="button" className="mode-card__friend-button mode-card__friend-button--alt" onClick={joinFriendsLobby}>
+                Войти
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="mode-card__friend-button mode-card__friend-button--alt"
+              onClick={() => setFriendInviteInputVisible(true)}
+            >
+              Присоединиться
+            </button>
+          )}
+        </div>
+      ),
     },
     {
       id: "computer",
       emoji: "🤖",
       title: "Играть с компьютером",
       description: "Режим против бота (временная заглушка).",
-      cta: "Скоро",
       onSelect: openComputerStub,
     },
   ];
@@ -1198,7 +1215,15 @@ export default function App() {
           onAuthorClick={handleAuthorClick}
         />
       ) : (
-        <GameModesCarousel items={modeCards} activeIndex={activeModeIndex} onChange={setActiveModeIndex} />
+        <Board
+          me={me}
+          game={gameView}
+          statusText={status}
+          onCellClick={handleCellClick}
+          onAuthorClick={handleAuthorClick}
+          modesLayout
+          boardContent={<GameModesCarousel items={modeCards} activeIndex={activeModeIndex} onChange={setActiveModeIndex} />}
+        />
       )}
       <Nav
         mode={navMode}

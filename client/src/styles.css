@@ -39,40 +39,49 @@ body{
 /* ====== КАРУСЕЛЬ РЕЖИМОВ ====== */
 .modes-carousel-wrap{
   width:100%;
-  max-width:520px;
+  height:100%;
   display:flex;
   flex-direction:column;
-  gap:16px;
 }
 .modes-carousel{
-  display:grid;
-  grid-template-columns:repeat(3, minmax(0, 1fr));
-  gap:10px;
-  touch-action:pan-y;
+  position:relative;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  touch-action:pan-y pinch-zoom;
   user-select:none;
+}
+.modes-carousel__track{
+  display:flex;
+  width:100%;
+  height:100%;
+  transition:transform .28s ease;
 }
 .modes-carousel.is-dragging{
   cursor:grabbing;
 }
 .mode-card{
+  flex:0 0 100%;
   background:var(--card);
   border:1px solid var(--line);
   border-radius:18px;
-  padding:16px 12px;
-  min-height:170px;
+  padding:18px 16px;
+  min-height:100%;
   display:flex;
   flex-direction:column;
   gap:10px;
   justify-content:flex-start;
-  transition:transform .2s ease, opacity .2s ease, border-color .2s ease, box-shadow .2s ease;
+  transition:transform .2s ease, opacity .2s ease, border-color .2s ease, box-shadow .2s ease, background .2s ease;
+  cursor:pointer;
 }
 .mode-card--active{
   border-color:rgba(34,197,94,.52);
   box-shadow:0 8px 24px rgba(0,0,0,.25), 0 0 0 1px rgba(34,197,94,.24);
-  transform:translateY(-2px);
+  transform:scale(1);
 }
 .mode-card--inactive{
-  opacity:.66;
+  opacity:.52;
+  transform:scale(.98);
 }
 .mode-card__emoji{
   font-size:28px;
@@ -87,32 +96,19 @@ body{
   color:var(--muted);
   line-height:1.35;
 }
-.modes-carousel__controls{
+.mode-card__extra{
+  margin-top:auto;
   display:flex;
   flex-direction:column;
   gap:12px;
-  align-items:center;
 }
-.modes-carousel__dots{
-  display:flex;
-  gap:8px;
+.mode-card__friend-actions{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:10px;
 }
-.modes-carousel__dot{
-  width:8px;
-  height:8px;
-  border-radius:50%;
-  border:0;
-  background:rgba(148,163,184,.45);
-  cursor:pointer;
-}
-.modes-carousel__dot.is-active{
-  width:24px;
-  border-radius:999px;
-  background:var(--accent);
-}
-.modes-carousel__action{
+.mode-card__friend-button{
   width:100%;
-  max-width:260px;
   padding:12px 14px;
   border-radius:14px;
   border:1px solid #365b43;
@@ -121,13 +117,27 @@ body{
   font-weight:700;
   cursor:pointer;
 }
-@media (max-width: 720px){
-  .modes-carousel{
-    grid-template-columns:1fr;
-  }
-  .mode-card{
-    min-height:180px;
-  }
+.mode-card__friend-button--alt{
+  border-color:#334155;
+  background:rgba(148,163,184,.15);
+}
+.mode-card__friend-join{
+  grid-column:span 2;
+  display:flex;
+  gap:8px;
+}
+.mode-card__friend-input{
+  flex:1;
+  border-radius:12px;
+  border:1px solid var(--line);
+  background:#0e1726;
+  color:var(--text);
+  padding:10px 12px;
+  outline:none;
+}
+.mode-card__friend-input:focus{
+  border-color:rgba(96,165,250,.55);
+  box-shadow:0 0 0 1px rgba(96,165,250,.28);
 }
 
 /* ====== КАРТОЧКА И ШАПКИ ИГРОКОВ ====== */
@@ -154,7 +164,7 @@ body{
 }
 .card--modes{
   flex:1;
-  min-height:calc(100dvh - var(--navbar-height) - 92px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  min-height:calc(100dvh - var(--navbar-height) - 98px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   padding:10px;
 }
 
