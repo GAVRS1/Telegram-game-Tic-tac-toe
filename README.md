@@ -62,7 +62,8 @@
    - `TELEGRAM_INITDATA_TTL_SEC` — TTL для Telegram `initData` в секундах (по умолчанию `600`, то есть 10 минут). Если `auth_date` старше TTL, данные авторизации отклоняются;
    - `PUBLIC_URL` — внешний URL для Web App (если отличается от локального);
    - `CORS_ORIGINS` — CSV-список разрешённых Origin для backend API (поддерживаются маски вида `https://*.netlify.app`, localhost разрешён для dev автоматически), например: `https://app.example.com,https://*.netlify.app`;
-   - параметры подключения к PostgreSQL (`DATABASE_URL` или `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`, `PGSSL`).
+   - параметры подключения к PostgreSQL (`DATABASE_URL` или `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`, `PGSSL`);
+   - frontend-переменные (в этом же корневом `.env`): `VITE_API_BASE_URL` и `VITE_WS_URL`.
 4. Примените миграции: `npm run migrate` (создаст таблицы для пользователей, статистики и достижений).
 5. Запустите backend (из корня репозитория): `npm run start`.
 6. Запустите frontend в режиме разработки:
