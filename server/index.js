@@ -1,4 +1,5 @@
 import path from "node:path";
+import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import http from "node:http";
 import crypto from "node:crypto";
@@ -85,7 +86,8 @@ const isAllowedCorsOrigin = (origin) => {
 
 const app = express();
 app.set("trust proxy", 1);
-const PUBLIC_DIR = path.resolve(__dirname, "..", "client", "dist");
+const CLIENT_DIST_DIR = path.resolve(__dirname, "..", "client", "dist");
+const CLIENT_ENTRY_FILE = path.join(CLIENT_DIST_DIR, "index.html");
 
 app.use(express.json({ limit: "100kb" }));
 app.use(helmet({
@@ -121,7 +123,7 @@ app.get("/config.json", (req, res) => {
   res.json({ webAppUrl, wsUrl });
 });
 
-app.use(express.static(PUBLIC_DIR));
+app.use(express.static(CLIENT_DIST_DIR));
 
 app.get("/leaders", async (_req, res) => {
   try {
@@ -246,7 +248,7 @@ app.post("/invite", async (req, res) => {
 
 app.get("*", (req, res, next) => {
   if (req.path === "/config.json") return next();
-  res.sendFile(path.join(PUBLIC_DIR, "index.html"));
+  res.sendFile(CLIENT_ENTRY_FILE);
 });
 
 const server = http.createServer(app);
@@ -774,5 +776,11 @@ if (!SKIP_BOT && BOT_TOKEN) {
   server.listen(PORT, () => {
     console.log(`✅ Server on : ${PORT}`);
     console.log(`🌐 WebApp   : ${PUBLIC_URL || `http://localhost:${PORT}`}`);
+    if (!process.env.NODE_ENV || process.env.NODE_ENV !== "test") {
+      console.log(`📦 Client build dir: ${CLIENT_DIST_DIR}`);
+      if (!existsSync(CLIENT_ENTRY_FILE)) {
+        console.warn("⚠️ client/dist/index.html was not found. Build frontend in client/ before production start.");
+      }
+    }
   });
 })();

@@ -4,8 +4,7 @@
 
 ## Кратко о проекте
 - **Бэкенд**: Node.js + Express предоставляет API/WS, валидирует подписи Telegram Web App, управляет матчмейкингом и игровой сессией.
-- **Frontend (production)**: собирается из `client/` в `client/dist` (React + Vite) и деплоится отдельно от backend.
-- **Legacy frontend**: папка `public/` содержит исторический ванильный клиент и используется только как legacy-слой/для обратной совместимости.
+- **Frontend (production)**: единственный runtime-клиент собирается из `client/` в `client/dist` (React + Vite).
 - **Данные**: PostgreSQL хранит профили, статистику и достижения игроков.
 - **Инфраструктура**: защита заголовков через Helmet, ограничение запросов, мониторинг, миграции БД через скрипты Node.js.
 
@@ -14,7 +13,7 @@
 2. Telegram Web App SDK передаёт данные авторизации; backend проверяет подпись, создаёт/обновляет профиль и ставит игрока в очередь.
 3. Игровые события (поиск соперника, ходы, завершение игры) идут через WebSocket; backend валидирует действия и синхронизирует состояние у обоих игроков.
 4. Результаты матчей сохраняются в PostgreSQL; статистика и достижения доступны через REST-эндпоинты `/leaders` и `/profile/:id`.
-5. Папка `public/` остаётся legacy-слоем и не является основным production-frontend.
+5. Legacy-клиент удалён; в production поддерживается только React/Vite frontend из `client/`.
 
 ## Структура файлов
 ```
@@ -24,11 +23,10 @@
 │   ├── public/          # Статические ассеты для Vite
 │   ├── dist/            # Production-сборка фронтенда (build output)
 │   └── package.json
-├── public/              # Legacy-frontend (ванильный JS, обратная совместимость)
-│   ├── js/
-│   ├── img/
-│   ├── styles.css
-│   └── index.html
+├── docs/                # Документация по миграции и инвентаризации
+│   └── legacy-client-inventory.md
+├── public/              # Статические ассеты (изображения)
+│   └── img/
 ├── server/              # Бэкенд и вспомогательные модули
 │   ├── index.js         # Точка входа HTTP + WebSocket backend-сервиса
 │   ├── db.js            # Подключение к PostgreSQL и запросы
@@ -83,7 +81,7 @@
   - Запуск из корня: `npm run start`
   - Предоставляет REST API и WebSocket endpoint для frontend.
 - **Legacy слой**:
-  - `public/` не используется как основной production-frontend и сохранён для совместимости.
+  - удалён из runtime; детали миграции: `docs/legacy-client-inventory.md`.
 
 ## Деплой фронтенда на Netlify
 - Для фронтенда из папки `client/` добавлен `netlify.toml` в корне репозитория.
