@@ -127,6 +127,11 @@ export function useTelegramAuth() {
   const refreshIdentity = useCallback(() => {
     const tg = telegram || (typeof window !== "undefined" ? window.Telegram?.WebApp : null);
     const user = getTelegramUser(tg);
+    const nextInitData = typeof tg?.initData === "string" ? tg.initData : "";
+    if (nextInitData && nextInitData !== initData) {
+      setInitData(nextInitData);
+    }
+
     if (!user) return false;
 
     const nextId = user?.id ? String(user.id) : null;
@@ -161,7 +166,7 @@ export function useTelegramAuth() {
     });
 
     return changed;
-  }, [telegram]);
+  }, [initData, telegram]);
 
   const value = useMemo(
     () => ({ telegram, initData, me, setMe, refreshIdentity, meRef }),
