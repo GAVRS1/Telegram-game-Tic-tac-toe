@@ -67,8 +67,6 @@ export function GameModesCarousel({ items, activeIndex, onChange }) {
 
   if (!itemCount) return null;
 
-  const activeItem = items[activeIndex] || items[0];
-
   return (
     <section className="modes-carousel-wrap">
       <div
@@ -79,46 +77,40 @@ export function GameModesCarousel({ items, activeIndex, onChange }) {
         onPointerCancel={clearPointer}
         onWheel={onWheel}
       >
-        {items.map((item, index) => {
-          const isActive = index === activeIndex;
-          return (
-            <article
-              key={item.id}
-              className={`mode-card ${isActive ? "mode-card--active" : "mode-card--inactive"}`}
-              onClick={() => onChange(index)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  onChange(index);
-                }
-              }}
-            >
-              <div className="mode-card__emoji" aria-hidden="true">{item.emoji}</div>
-              <div className="mode-card__title">{item.title}</div>
-              <div className="mode-card__description">{item.description}</div>
-            </article>
-          );
-        })}
-      </div>
-
-      <div className="modes-carousel__controls">
-        <div className="modes-carousel__dots" aria-label="Выбор режима игры">
-          {items.map((item, index) => (
-            <button
-              key={`${item.id}-dot`}
-              type="button"
-              className={`modes-carousel__dot ${index === activeIndex ? "is-active" : ""}`}
-              onClick={() => onChange(index)}
-              aria-label={item.title}
-            />
-          ))}
+        <div className="modes-carousel__track" style={{ transform: `translateX(-${activeIndex * 100}%)` }}>
+          {items.map((item, index) => {
+            const isActive = index === activeIndex;
+            return (
+              <article
+                key={item.id}
+                className={`mode-card ${isActive ? "mode-card--active" : "mode-card--inactive"}`}
+                onClick={() => {
+                  if (!isActive) {
+                    onChange(index);
+                    return;
+                  }
+                  item.onSelect?.();
+                }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    if (!isActive) onChange(index);
+                    else item.onSelect?.();
+                  }
+                }}
+              >
+                <div className="mode-card__emoji" aria-hidden="true">{item.emoji}</div>
+                <div className="mode-card__title">{item.title}</div>
+                <div className="mode-card__description">{item.description}</div>
+                {typeof item.renderExtra === "function" ? (
+                  <div className="mode-card__extra">{item.renderExtra()}</div>
+                ) : null}
+              </article>
+            );
+          })}
         </div>
-
-        <button type="button" className="modes-carousel__action" onClick={activeItem?.onSelect}>
-          {activeItem?.cta || "Выбрать"}
-        </button>
       </div>
     </section>
   );
