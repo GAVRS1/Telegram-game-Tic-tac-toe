@@ -55,6 +55,16 @@ export async function ensureSchema() {
   await p.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS draws INTEGER NOT NULL DEFAULT 0;`);
   await p.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS invites_count INTEGER NOT NULL DEFAULT 0;`);
   await p.query(`
+    CREATE TABLE IF NOT EXISTS referrals (
+      inviter_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      invited_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (inviter_id, invited_id)
+    );
+  `);
+  await p.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_referrals_invited_unique ON referrals (invited_id);`);
+  await p.query(`CREATE INDEX IF NOT EXISTS idx_referrals_inviter ON referrals (inviter_id);`);
+  await p.query(`
     CREATE TABLE IF NOT EXISTS achievements (
       id           TEXT PRIMARY KEY,
       name         TEXT NOT NULL,
@@ -217,15 +227,44 @@ export async function getLeadersByInvites(limit = 20) {
 
   const { rows } = await p.query(
     `
-      SELECT id, username, avatar_url, games_played, wins, losses, draws, invites_count,
-             CASE WHEN games_played > 0 THEN ROUND((wins::decimal / games_played) * 100) ELSE 0 END AS win_rate
-      FROM users
-      ORDER BY invites_count DESC, updated_at DESC
+      SELECT
+        u.id,
+        u.username,
+        u.avatar_url,
+        u.games_played,
+        u.wins,
+        u.losses,
+        u.draws,
+        COALESCE(r.invites_count, 0)::INT AS invites_count,
+        CASE WHEN u.games_played > 0 THEN ROUND((u.wins::decimal / u.games_played) * 100) ELSE 0 END AS win_rate
+      FROM users u
+      LEFT JOIN (
+        SELECT inviter_id, COUNT(*)::INT AS invites_count
+        FROM referrals
+        GROUP BY inviter_id
+      ) r ON r.inviter_id = u.id
+      ORDER BY COALESCE(r.invites_count, 0) DESC, u.updated_at DESC
       LIMIT $1;
     `,
     [limit]
   );
   return rows;
+}
+
+export async function getInvitedFriendsCount(inviterId) {
+  const p = getPool();
+  if (!p) return 0;
+  if (!isNumericId(inviterId)) return 0;
+
+  const { rows } = await p.query(
+    `
+      SELECT COUNT(*)::INT AS invites_count
+      FROM referrals
+      WHERE inviter_id = $1;
+    `,
+    [Number(inviterId)]
+  );
+  return Number(rows[0]?.invites_count || 0);
 }
 
 export async function getUserProfile(id) {
@@ -341,6 +380,69 @@ export async function acceptInvite({ code, guestUserId }) {
 
     await client.query("COMMIT");
     return accepted;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function bindReferral({ inviterId, invitedId }) {
+  const p = getPool();
+  if (!p) return { linked: false, reason: "db_unavailable" };
+  if (!isNumericId(inviterId) || !isNumericId(invitedId)) return { linked: false, reason: "invalid_id" };
+
+  const inviter = Number(inviterId);
+  const invited = Number(invitedId);
+  if (inviter === invited) return { linked: false, reason: "self_referral" };
+
+  const client = await p.connect();
+  try {
+    await client.query("BEGIN");
+
+    const alreadyLinked = await client.query(
+      `
+        SELECT inviter_id
+        FROM referrals
+        WHERE invited_id = $1
+        LIMIT 1;
+      `,
+      [invited]
+    );
+    if (alreadyLinked.rowCount > 0) {
+      await client.query("ROLLBACK");
+      return { linked: false, reason: "invited_already_has_referrer" };
+    }
+
+    const { rows } = await client.query(
+      `
+        INSERT INTO referrals (inviter_id, invited_id)
+        VALUES ($1, $2)
+        ON CONFLICT (inviter_id, invited_id) DO NOTHING
+        RETURNING inviter_id;
+      `,
+      [inviter, invited]
+    );
+
+    const linked = rows.length > 0;
+    if (!linked) {
+      await client.query("ROLLBACK");
+      return { linked: false, reason: "duplicate_pair" };
+    }
+
+    await client.query(
+      `
+        UPDATE users
+           SET invites_count = invites_count + 1,
+               updated_at = NOW()
+         WHERE id = $1;
+      `,
+      [inviter]
+    );
+
+    await client.query("COMMIT");
+    return { linked: true, reason: "linked" };
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;

@@ -1,7 +1,18 @@
-import { ensureSchema, upsertUser } from "../../db.js";
+import { bindReferral, ensureSchema, upsertUser } from "../../db.js";
 import { extractUserData, validateTelegramInitData } from "../../telegramAuth.js";
 import { sanitizeString, validateHelloMessage } from "../../validation.js";
 import { buildTelegramName, sanitizeUsername } from "../../common/sanitize.js";
+
+function resolveReferralInviterId(startParam) {
+  if (typeof startParam !== "string") return null;
+  const trimmed = startParam.trim();
+  if (!trimmed) return null;
+
+  const prefixed = trimmed.match(/^ref[_:-]?([0-9]+)$/i);
+  if (prefixed) return prefixed[1];
+  if (/^[0-9]+$/.test(trimmed)) return trimmed;
+  return null;
+}
 
 export const createHelloHandler = ({ wsByUid, userByWs, broadcastOnlineStats }) => async (ws, msg) => {
   if (!validateHelloMessage(msg)) return;
@@ -13,6 +24,8 @@ export const createHelloHandler = ({ wsByUid, userByWs, broadcastOnlineStats }) 
   const usernameHint = sanitizeUsername(msg.username);
 
   let profile = { id: uid, name, username: usernameHint, avatar, isVerified: false, source: "fallback" };
+
+  let referralInviterId = resolveReferralInviterId(typeof msg.startParam === "string" ? msg.startParam : "");
 
   if (initData) {
     const initDataValidation = validateTelegramInitData(initData);
@@ -34,6 +47,11 @@ export const createHelloHandler = ({ wsByUid, userByWs, broadcastOnlineStats }) 
           isVerified: true,
           source: "telegram",
         };
+      }
+
+      if (!referralInviterId) {
+        const params = new URLSearchParams(initData);
+        referralInviterId = resolveReferralInviterId(params.get("start_param"));
       }
     }
   }
@@ -63,6 +81,10 @@ export const createHelloHandler = ({ wsByUid, userByWs, broadcastOnlineStats }) 
     if (/^[0-9]+$/.test(uid)) {
       const usernameForDb = profile.username || profile.name;
       await upsertUser({ id: uid, username: usernameForDb, avatar_url: profile.avatar });
+      if (referralInviterId) {
+        await upsertUser({ id: referralInviterId, username: null, avatar_url: null });
+        await bindReferral({ inviterId: referralInviterId, invitedId: uid });
+      }
     }
   } catch {}
 };
