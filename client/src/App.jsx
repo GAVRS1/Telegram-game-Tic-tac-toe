@@ -154,6 +154,7 @@ export default function App() {
   const wsConnectedRef = useRef(false);
   const lastHelloFingerprintRef = useRef("");
   const pendingOppProfiles = useRef(new Set());
+  const pendingInviteShareModeRef = useRef("link");
   const statsSystemRef = useRef(null);
   const mountedRef = useRef(true);
 
@@ -798,7 +799,21 @@ export default function App() {
 
       if (msg.t === "invite.created") {
         setStatus({ text: "Ссылка приглашения создана", blink: false });
-        shareInviteLink(msg.link);
+        const shareMode = pendingInviteShareModeRef.current;
+        pendingInviteShareModeRef.current = "link";
+
+        if (shareMode === "code") {
+          const inviteCode = typeof msg.code === "string" ? msg.code.trim() : "";
+          if (inviteCode) {
+            navigator.clipboard?.writeText(inviteCode)
+              .then(() => notifications.success("Код лобби скопирован"))
+              .catch(() => notifications.info(`Код лобби: ${inviteCode}`));
+          } else {
+            notifications.error("Не удалось получить код лобби");
+          }
+        } else {
+          shareInviteLink(msg.link);
+        }
         return;
       }
 
