@@ -111,6 +111,23 @@ function formatDate(value) {
   }
 }
 
+function resolveInviteCodeFromLocation() {
+  if (typeof window === "undefined") return "";
+
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const directRef = params.get("ref")?.trim();
+    if (directRef) return directRef;
+
+    const telegramStart = params.get("tgWebAppStartParam")?.trim();
+    if (telegramStart) return telegramStart;
+  } catch {}
+
+  const tg = window.Telegram?.WebApp;
+  const startParam = tg?.initDataUnsafe?.start_param;
+  return typeof startParam === "string" ? startParam.trim() : "";
+}
+
 export default function App() {
   const { telegram, initData, me, refreshIdentity, meRef } = useTelegramAuth();
   const [game, setGame] = useState(initialGameState);
@@ -126,12 +143,7 @@ export default function App() {
   });
   const [winLine, setWinLine] = useState(null);
   const [pendingInviteCode, setPendingInviteCode] = useState(() => {
-    if (typeof window === "undefined") return "";
-    try {
-      return new URLSearchParams(window.location.search).get("ref")?.trim() || "";
-    } catch {
-      return "";
-    }
+    return resolveInviteCodeFromLocation();
   });
 
   const gameRef = useRef(game);
@@ -152,6 +164,12 @@ export default function App() {
   useEffect(() => {
     gameRef.current = game;
   }, [game]);
+
+  useEffect(() => {
+    if (pendingInviteCode) return;
+    const nextCode = resolveInviteCodeFromLocation();
+    if (nextCode) setPendingInviteCode(nextCode);
+  }, [pendingInviteCode, telegram, initData]);
 
   useEffect(() => {
     statsSystemRef.current = new StatsSystem(() => meRef.current);
@@ -627,8 +645,9 @@ export default function App() {
         setPendingInviteCode("");
         if (typeof window !== "undefined") {
           const url = new URL(window.location.href);
-          if (url.searchParams.has("ref")) {
+          if (url.searchParams.has("ref") || url.searchParams.has("tgWebAppStartParam")) {
             url.searchParams.delete("ref");
+            url.searchParams.delete("tgWebAppStartParam");
             window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
           }
         }
