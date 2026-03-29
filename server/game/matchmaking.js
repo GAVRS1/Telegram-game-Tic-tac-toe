@@ -9,21 +9,92 @@ export const createMatchmaking = ({ toWs, userByWs, games, endGame }) => {
   const queueOrder = [];
   let queueHead = 0;
   const lastQueueJoinByUid = new Map();
+  const queueMetrics = {
+    queueLength: 0,
+    compactionCount: 0,
+    totalMatchedUsers: 0,
+    totalWaitMs: 0,
+    averageWaitMs: 0,
+  };
 
   const QUEUE_JOIN_THROTTLE_MS = 3000;
+  const QUEUE_COMPACTION_HEAD_THRESHOLD = 200;
+  const QUEUE_MAINTENANCE_INTERVAL_MS = 15000;
 
   const inQueue = (uid) => queueByUid.has(uid);
+
+  const updateQueueMetrics = () => {
+    queueMetrics.queueLength = queueByUid.size;
+    if (queueMetrics.totalMatchedUsers > 0) {
+      queueMetrics.averageWaitMs = Math.round(queueMetrics.totalWaitMs / queueMetrics.totalMatchedUsers);
+    } else {
+      queueMetrics.averageWaitMs = 0;
+    }
+  };
 
   const removeFromQueue = (uid) => {
     if (!uid) return;
     queueByUid.delete(uid);
+    updateQueueMetrics();
   };
 
   const recordQueueJoin = (uid, ws) => {
     if (queueByUid.has(uid)) return false;
     queueByUid.set(uid, { ws, ts: Date.now() });
     queueOrder.push(uid);
+    updateQueueMetrics();
     return true;
+  };
+
+  const compactQueueOrder = (reason) => {
+    const compacted = [];
+    const seen = new Set();
+
+    for (let i = queueHead; i < queueOrder.length; i += 1) {
+      const uid = queueOrder[i];
+      if (!queueByUid.has(uid) || seen.has(uid)) continue;
+      compacted.push(uid);
+      seen.add(uid);
+    }
+
+    queueByUid.forEach((_entry, uid) => {
+      if (seen.has(uid)) return;
+      compacted.push(uid);
+      seen.add(uid);
+    });
+
+    queueOrder.length = 0;
+    queueOrder.push(...compacted);
+    queueHead = 0;
+    queueMetrics.compactionCount += 1;
+    updateQueueMetrics();
+    console.log(
+      `[QUEUE] compacted reason=${reason} length=${queueOrder.length} active=${queueByUid.size} compactions=${queueMetrics.compactionCount}`
+    );
+  };
+
+  const inspectQueueForAnomalies = () => {
+    const now = Date.now();
+    let stuckWithoutWs = 0;
+
+    queueByUid.forEach((entry, uid) => {
+      const ws = toWs(uid);
+      const inUserMap = ws ? userByWs.has(ws) : false;
+      if (!ws || !inUserMap || ws.readyState !== 1) {
+        stuckWithoutWs += 1;
+        const waitMs = now - (entry?.ts || now);
+        console.warn(`[QUEUE][ANOMALY] uid=${uid} has no active ws waitMs=${waitMs}`);
+      }
+    });
+
+    if (queueHead >= QUEUE_COMPACTION_HEAD_THRESHOLD) {
+      compactQueueOrder("queue_head_threshold");
+    }
+
+    updateQueueMetrics();
+    console.log(
+      `[QUEUE][METRICS] len=${queueMetrics.queueLength} compactions=${queueMetrics.compactionCount} avgWaitMs=${queueMetrics.averageWaitMs} stuckNoWs=${stuckWithoutWs}`
+    );
   };
 
   const findNextQueuedUid = (startIndex, skipUid = null) => {
@@ -132,8 +203,16 @@ export const createMatchmaking = ({ toWs, userByWs, games, endGame }) => {
         return;
       }
 
+      const firstEntry = queueByUid.get(first.uid);
+      const secondEntry = queueByUid.get(second.uid);
       removeFromQueue(first.uid);
       removeFromQueue(second.uid);
+      const now = Date.now();
+      const firstWaitMs = now - (firstEntry?.ts || now);
+      const secondWaitMs = now - (secondEntry?.ts || now);
+      queueMetrics.totalMatchedUsers += 2;
+      queueMetrics.totalWaitMs += firstWaitMs + secondWaitMs;
+      updateQueueMetrics();
       queueHead = second.index + 1;
 
       send(toWs(first.uid), { t: "queue.left" });
@@ -185,6 +264,8 @@ export const createMatchmaking = ({ toWs, userByWs, games, endGame }) => {
     }
   };
 
+  const queueMaintenanceInterval = setInterval(inspectQueueForAnomalies, QUEUE_MAINTENANCE_INTERVAL_MS);
+
   return {
     inQueue,
     dropFromQueue,
@@ -192,5 +273,7 @@ export const createMatchmaking = ({ toWs, userByWs, games, endGame }) => {
     queueJoin,
     queueLeave,
     cleanupDisconnectedUser,
+    getQueueMetrics: () => ({ ...queueMetrics }),
+    stop: () => clearInterval(queueMaintenanceInterval),
   };
 };

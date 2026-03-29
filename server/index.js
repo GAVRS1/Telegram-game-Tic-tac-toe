@@ -174,6 +174,7 @@ const onlineStatsInterval = setInterval(broadcastOnlineStats, 7000);
 wss.on("close", () => {
   clearInterval(heartbeatInterval);
   clearInterval(onlineStatsInterval);
+  matchmaking.stop();
 });
 
 wss.on("connection", (ws) => {
