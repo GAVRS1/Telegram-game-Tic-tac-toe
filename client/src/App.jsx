@@ -206,6 +206,42 @@ export default function App() {
     statsSystemRef.current = new StatsSystem(() => meRef.current);
   }, [meRef]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const root = document.documentElement;
+    const tg = telegram || window.Telegram?.WebApp || null;
+
+    const syncViewportSize = () => {
+      const stableHeight = Number(tg?.viewportStableHeight);
+      const dynamicHeight = Number(tg?.viewportHeight);
+      const nextHeight = Number.isFinite(stableHeight) && stableHeight > 0
+        ? stableHeight
+        : Number.isFinite(dynamicHeight) && dynamicHeight > 0
+          ? dynamicHeight
+          : window.innerHeight;
+
+      root.style.setProperty("--tg-viewport-height", `${nextHeight}px`);
+      root.style.setProperty("--tg-viewport-width", `${window.innerWidth}px`);
+    };
+
+    syncViewportSize();
+    window.addEventListener("resize", syncViewportSize, { passive: true });
+
+    try {
+      tg?.onEvent?.("viewportChanged", syncViewportSize);
+      tg?.onEvent?.("viewport_changed", syncViewportSize);
+    } catch {}
+
+    return () => {
+      window.removeEventListener("resize", syncViewportSize);
+      try {
+        tg?.offEvent?.("viewportChanged", syncViewportSize);
+        tg?.offEvent?.("viewport_changed", syncViewportSize);
+      } catch {}
+    };
+  }, [telegram]);
+
   const wsUrl = resolveWsUrl();
 
   const sendWs = useCallback((payload) => sendRef.current(payload), []);

@@ -35,7 +35,7 @@ export function Board({
   const totalOnline = Number(onlineStats?.total ?? 0);
 
   return (
-    <div className="wrap">
+    <div className={`wrap ${modesLayout ? "wrap--modes" : "wrap--game"}`}>
       <div className="top-meta">
         <button className="author-badge" type="button" title="Автор 0xGavrs" onClick={onAuthorClick}>
           <img src="https://t.me/i/userpic/320/rsgavrs.jpg" alt="0xGavrs" loading="lazy" />
@@ -49,7 +49,7 @@ export function Board({
         </div>
       </div>
 
-      <div className={`card ${modesLayout ? "card--modes" : ""}`}>
+      <div className={`card ${modesLayout ? "card--modes" : "card--game"}`}>
         {!modesLayout ? (
           <>
             <div className="badges">
