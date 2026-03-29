@@ -18,6 +18,48 @@ function getTelegramUser(tg) {
   return tg?.initDataUnsafe?.user || null;
 }
 
+function readInitDataFromLocation() {
+  if (typeof window === "undefined") return "";
+
+  const candidates = [];
+  try {
+    const url = new URL(window.location.href);
+    candidates.push(url.searchParams.get("tgWebAppData") || "");
+  } catch {}
+
+  try {
+    const hash = String(window.location.hash || "");
+    if (hash.startsWith("#")) {
+      const hashParams = new URLSearchParams(hash.slice(1));
+      candidates.push(hashParams.get("tgWebAppData") || "");
+    }
+  } catch {}
+
+  for (const raw of candidates) {
+    const value = String(raw || "").trim();
+    if (!value) continue;
+    try {
+      return decodeURIComponent(value);
+    } catch {
+      return value;
+    }
+  }
+
+  return "";
+}
+
+function parseUserFromInitData(initData) {
+  if (!initData) return null;
+  try {
+    const params = new URLSearchParams(initData);
+    const userRaw = params.get("user");
+    if (!userRaw) return null;
+    return JSON.parse(userRaw);
+  } catch {
+    return null;
+  }
+}
+
 function getTelegramWebApp() {
   if (typeof window === "undefined") return null;
   return window.Telegram?.WebApp || null;
@@ -59,10 +101,13 @@ function buildInitialMe(user) {
 
 export function useTelegramAuth() {
   const [telegram, setTelegram] = useState(null);
-  const [initData, setInitData] = useState("");
+  const [initData, setInitData] = useState(() => {
+    const tg = typeof window !== "undefined" ? window.Telegram?.WebApp : null;
+    return tg?.initData || readInitDataFromLocation() || "";
+  });
   const [me, setMe] = useState(() => {
     const tg = typeof window !== "undefined" ? window.Telegram?.WebApp : null;
-    const user = getTelegramUser(tg);
+    const user = getTelegramUser(tg) || parseUserFromInitData(tg?.initData || readInitDataFromLocation());
     return buildInitialMe(user);
   });
 
@@ -82,9 +127,9 @@ export function useTelegramAuth() {
 
       initTelegram(tg);
       setTelegram(tg);
-      setInitData(tg.initData || "");
+      setInitData(tg.initData || readInitDataFromLocation() || "");
 
-      const user = getTelegramUser(tg);
+      const user = getTelegramUser(tg) || parseUserFromInitData(tg.initData || readInitDataFromLocation());
       if (user) {
         setMe((prev) => {
           const next = buildInitialMe(user);
