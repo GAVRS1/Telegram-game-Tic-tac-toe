@@ -4,21 +4,6 @@ export function useWebSocket({ url, onOpen, onMessage, onClose }) {
   const socketRef = useRef(null);
   const retriesRef = useRef(0);
   const connectingRef = useRef(false);
-  const onOpenRef = useRef(onOpen);
-  const onMessageRef = useRef(onMessage);
-  const onCloseRef = useRef(onClose);
-
-  useEffect(() => {
-    onOpenRef.current = onOpen;
-  }, [onOpen]);
-
-  useEffect(() => {
-    onMessageRef.current = onMessage;
-  }, [onMessage]);
-
-  useEffect(() => {
-    onCloseRef.current = onClose;
-  }, [onClose]);
 
   useEffect(() => {
     if (!url) return undefined;
@@ -36,7 +21,7 @@ export function useWebSocket({ url, onOpen, onMessage, onClose }) {
         socket.addEventListener("open", () => {
           connectingRef.current = false;
           retriesRef.current = 0;
-          onOpenRef.current?.();
+          onOpen?.();
         });
 
         socket.addEventListener("message", (event) => {
@@ -46,11 +31,11 @@ export function useWebSocket({ url, onOpen, onMessage, onClose }) {
           } catch {
             return;
           }
-          onMessageRef.current?.(msg);
+          onMessage?.(msg);
         });
 
         socket.addEventListener("close", () => {
-          onCloseRef.current?.();
+          onClose?.();
           connectingRef.current = false;
           const delay = Math.min(1000 * 2 ** retriesRef.current++, 15000);
           setTimeout(connect, delay);
@@ -72,7 +57,7 @@ export function useWebSocket({ url, onOpen, onMessage, onClose }) {
         socketRef.current?.close();
       } catch {}
     };
-  }, [url]);
+  }, [url, onOpen, onMessage, onClose]);
 
   const send = (payload) => {
     try {
