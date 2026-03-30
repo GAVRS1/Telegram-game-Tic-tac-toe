@@ -225,19 +225,19 @@ function formatDate(value) {
 }
 
 const RATING_METRICS = [
-  { key: "wins", label: "Победы", valueLabel: "Победы", icon: "🏆" },
-  { key: "coins", label: "Монеты", valueLabel: "Монет", icon: "🪙" },
+  { key: "wins", label: "Победы", valueLabel: "Победы", iconType: "trophy" },
+  { key: "coins", label: "Монеты", valueLabel: "Монет", iconType: "coin" },
   {
     key: "achievements",
     label: "Достижения",
     valueLabel: "Открыто достижений",
-    icon: "🎖️",
+    iconType: "medal",
   },
   {
     key: "invites",
     label: "Приглашения",
     valueLabel: "Приглашено друзей",
-    icon: "🤝",
+    iconType: "handshake",
   },
 ];
 
@@ -245,6 +245,19 @@ function getRatingMetricConfig(metric) {
   return (
     RATING_METRICS.find((item) => item.key === metric) || RATING_METRICS[0]
   );
+}
+
+function renderMetricIcon(iconType, className = "metric-icon") {
+  if (iconType === "coin") {
+    return <img src="/img/coin.svg" alt="" aria-hidden="true" className={`coin-icon ${className}`.trim()} />;
+  }
+
+  const iconMap = {
+    trophy: "🏆",
+    medal: "🎖️",
+    handshake: "🤝",
+  };
+  return <span className={className}>{iconMap[iconType] || "🏆"}</span>;
 }
 
 function resolveStartParamFromLocation() {
@@ -288,6 +301,7 @@ export default function App() {
     verified: 0,
     guest: 0,
   });
+  const [coinBalance, setCoinBalance] = useState(0);
   const [modalState, setModalState] = useState({
     open: false,
     title: "",
@@ -337,6 +351,23 @@ export default function App() {
   useEffect(() => {
     statsSystemRef.current = new StatsSystem(() => meRef.current);
   }, [meRef]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const syncBalance = async () => {
+      const profileResult = await statsSystemRef.current?.loadProfile({
+        force: false,
+      });
+      if (cancelled) return;
+      const nextBalance = Number(profileResult?.profile?.coins_balance ?? 0);
+      setCoinBalance(nextBalance);
+    };
+
+    syncBalance().catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [me?.id]);
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
@@ -959,11 +990,11 @@ export default function App() {
                     }}
                   >
                     <div style={{ fontWeight: 700, color: "var(--text)" }}>
-                      {selectedMetric.icon} {metricValue(user)} ·{" "}
+                      {renderMetricIcon(selectedMetric.iconType)} {metricValue(user)} ·{" "}
                       {selectedMetric.valueLabel}
                     </div>
-                    <div>
-                      🪙 {Number(user.coins_balance ?? 0)} | ⚖️{" "}
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      {renderMetricIcon("coin")} {Number(user.coins_balance ?? 0)} | ⚖️{" "}
                       {Number(user.win_rate ?? 0)}%
                     </div>
                   </div>
@@ -1013,6 +1044,7 @@ export default function App() {
     });
     const stats = profileResult?.summary || {};
     const profile = profileResult?.profile || null;
+    setCoinBalance(Number(profile?.coins_balance ?? 0));
 
     const fallbackName = me?.username?.trim()
       ? `@${sanitizeUsername(me.username)}`
@@ -2020,6 +2052,7 @@ export default function App() {
           me={me}
           game={gameView}
           onlineStats={onlineStats}
+          coinBalance={coinBalance}
           statusText={status}
           winLine={winLine}
           onCellClick={handleCellClick}
@@ -2038,6 +2071,7 @@ export default function App() {
           me={me}
           game={gameView}
           onlineStats={onlineStats}
+          coinBalance={coinBalance}
           statusText={status}
           onCellClick={handleCellClick}
           onAuthorClick={handleAuthorClick}

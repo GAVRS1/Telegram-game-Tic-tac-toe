@@ -1,39 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48" fill="none" role="img" aria-label="Крутящаяся монетка">
-  <title>Крутящаяся монетка</title>
-
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
   <defs>
-    <linearGradient id="coinFill" x1="12" y1="12" x2="36" y2="36" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#FFD95A"/>
-      <stop offset="1" stop-color="#F4B400"/>
+    <linearGradient id="coinFill" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FDE68A"/>
+      <stop offset="1" stop-color="#F59E0B"/>
+    </linearGradient>
+    <linearGradient id="coinInner" x1="16" y1="16" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FEF3C7"/>
+      <stop offset="1" stop-color="#FBBF24"/>
     </linearGradient>
   </defs>
-
-  <g transform-origin="24 24">
-    <animateTransform
-      attributeName="transform"
-      type="scale"
-      values="1 1; 0.2 1; -1 1; -0.2 1; 1 1"
-      keyTimes="0;0.25;0.5;0.75;1"
-      dur="0.9s"
-      repeatCount="indefinite"
-    />
-
-    <!-- монета -->
-    <circle
-      cx="24"
-      cy="24"
-      r="12"
-      fill="url(#coinFill)"
-      stroke="#F3B400"
-      stroke-width="1.8"
-    />
-
-    <!-- внутренний кант -->
-    <circle
-      cx="24"
-      cy="24"
-      r="8"
-      stroke-width="1.6"
-    />
-  </g>
+  <circle cx="32" cy="32" r="28" fill="url(#coinFill)" stroke="#B45309" stroke-width="4"/>
+  <circle cx="32" cy="32" r="18" fill="url(#coinInner)" stroke="#D97706" stroke-width="3"/>
+  <path d="M24 34.5C24.2 39.1 27.6 42 32 42C36.3 42 39.4 39.6 39.4 35.9C39.4 32.6 37.4 31 33.6 30L30.8 29.3C28.7 28.8 27.6 28 27.6 26.4C27.6 24.6 29.2 23.4 31.8 23.4C34.5 23.4 36.2 24.8 36.4 27.1" stroke="#92400E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M32 20V44" stroke="#92400E" stroke-width="3" stroke-linecap="round"/>
 </svg>

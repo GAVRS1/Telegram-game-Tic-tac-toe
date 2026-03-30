@@ -635,6 +635,13 @@ body {
   width: 44px;
   height: 44px;
 }
+.coin-icon {
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+  object-fit: contain;
+  vertical-align: middle;
+}
 .navbtn .label {
   font-size: 10px;
   color: var(--muted);
@@ -673,6 +680,11 @@ body {
   justify-content: space-between;
   gap: 8px;
 }
+.top-meta__stats {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 .author-badge {
   position: relative;
   margin: 0 0 6px 2px;
@@ -703,6 +715,20 @@ body {
   border-radius: 10px;
   padding: 6px 10px;
   background: rgba(17, 24, 39, 0.95);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+.coin-balance {
+  margin: 0 0 6px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid #624310;
+  background: rgba(120, 53, 15, 0.28);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
 .lobby-code {
