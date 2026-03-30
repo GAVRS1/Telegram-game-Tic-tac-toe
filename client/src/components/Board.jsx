@@ -12,6 +12,7 @@ export function Board({
   me,
   game,
   onlineStats,
+  coinBalance = 0,
   statusText,
   winLine,
   onCellClick,
@@ -35,6 +36,7 @@ export function Board({
   const youMark = game?.you || "—";
   const oppMark = game?.you ? (game.you === "X" ? "O" : "X") : "—";
   const totalOnline = Number(onlineStats?.total ?? 0);
+  const safeCoinBalance = Number(coinBalance ?? 0);
   const roundWinsX = Number(game?.roundWinsX ?? 0);
   const roundWinsO = Number(game?.roundWinsO ?? 0);
   const targetWins = Number(game?.matchTargetWins ?? 3);
@@ -58,8 +60,14 @@ export function Board({
             <span>{lobbyInviteCode}</span>
           </button>
         ) : null}
-        <div className="online-stats online-stats--top" aria-live="polite">
-          Онлайн: {totalOnline}
+        <div className="top-meta__stats">
+          <div className="coin-balance" aria-live="polite">
+            <img className="coin-icon" src="/img/coin.svg" alt="" aria-hidden="true" />
+            <span>{safeCoinBalance}</span>
+          </div>
+          <div className="online-stats online-stats--top" aria-live="polite">
+            Онлайн: {totalOnline}
+          </div>
         </div>
       </div>
 
