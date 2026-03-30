@@ -3,6 +3,10 @@ import { extractUserData, validateTelegramInitData } from "../../telegramAuth.js
 import { sanitizeString, validateHelloMessage } from "../../validation.js";
 import { buildTelegramName, sanitizeUsername } from "../../common/sanitize.js";
 import { parseStartPayload } from "../../common/startPayload.js";
+import { awardCoins, COIN_REASONS } from "../../services/coins.js";
+import { logCoinAward } from "../../monitoring.js";
+
+const REFERRAL_LINK_COIN_REWARD = Number(process.env.COIN_REWARD_REFERRAL_LINK || 75);
 
 export const createHelloHandler = ({ wsByUid, userByWs, broadcastOnlineStats }) => async (ws, msg) => {
   if (!validateHelloMessage(msg)) return;
@@ -114,6 +118,39 @@ export const createHelloHandler = ({ wsByUid, userByWs, broadcastOnlineStats }) 
         const referralResult = await bindReferral({ inviterRefCode, invitedId: uid });
         if (referralResult.linked) {
           console.log(`[REFERRAL] uid=${uid} linked via ref=${inviterRefCode}`);
+          const inviterId = referralResult.inviterId;
+          const invitedId = referralResult.invitedId;
+          const eventKey = `referral:${inviterId}:${invitedId}`;
+          try {
+            const awardResult = await awardCoins({
+              userId: inviterId,
+              reason: COIN_REASONS.REFERRAL_SIGNUP,
+              amount: REFERRAL_LINK_COIN_REWARD,
+              meta: {
+                event_key: eventKey,
+                source: "referral_link",
+                invited_id: invitedId,
+              },
+            });
+            logCoinAward({
+              source: "referral_link",
+              eventKey,
+              userId: inviterId,
+              reason: COIN_REASONS.REFERRAL_SIGNUP,
+              amount: REFERRAL_LINK_COIN_REWARD,
+              result: awardResult.alreadyAwarded ? "already_awarded" : "awarded",
+            });
+          } catch (error) {
+            logCoinAward({
+              source: "referral_link",
+              eventKey,
+              userId: inviterId,
+              reason: COIN_REASONS.REFERRAL_SIGNUP,
+              amount: REFERRAL_LINK_COIN_REWARD,
+              result: "error",
+              error,
+            });
+          }
         } else {
           console.log(
             `[REFERRAL] uid=${uid} skipped ref=${inviterRefCode} reason=${referralResult.reason || "unknown"}`

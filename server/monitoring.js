@@ -32,3 +32,19 @@ export function loggingMiddleware(req, res, next) {
   
   next();
 }
+
+export function logCoinAward({ source, eventKey, userId, reason, amount, result, error = null }) {
+  const errorCode = error ? error.message || String(error) : "";
+  const message = [
+    `[COIN_AWARD] source=${source || "unknown"}`,
+    `event_key=${eventKey || "none"}`,
+    `user_id=${userId ?? "none"}`,
+    `reason=${reason || "none"}`,
+    `amount=${amount ?? "none"}`,
+    `result=${result || "unknown"}`,
+    errorCode ? `error=${errorCode}` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  console.log(message);
+}

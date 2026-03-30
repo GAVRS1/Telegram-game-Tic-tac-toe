@@ -41,7 +41,10 @@ function normalizeMeta(meta) {
 
 function normalizeEventKey(meta) {
   const rawEventKey = typeof meta?.event_key === "string" ? meta.event_key.trim() : "";
-  return rawEventKey || null;
+  if (!rawEventKey) {
+    throw new Error("coins.event_key_required");
+  }
+  return rawEventKey;
 }
 
 export async function awardCoins({ userId, reason, amount, meta = {} }) {
@@ -64,7 +67,7 @@ export async function awardCoins({ userId, reason, amount, meta = {} }) {
       `
         INSERT INTO coin_transactions (user_id, amount, reason, event_key, meta)
         VALUES ($1, $2, $3, $4, $5::jsonb)
-        ON CONFLICT (event_key) WHERE event_key IS NOT NULL DO NOTHING
+        ON CONFLICT (event_key) DO NOTHING
         RETURNING id, user_id, amount, reason, event_key, meta, created_at;
       `,
       [normalizedUserId, normalizedAmount, normalizedReason, eventKey, JSON.stringify(normalizedMeta)]
