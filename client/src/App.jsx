@@ -472,35 +472,38 @@ export default function App() {
     [sendWs],
   );
 
-  const toLobby = useCallback((options = {}) => {
-    const { isFriendsFlow = false } = options;
-    if (botTimeoutRef.current) {
-      clearTimeout(botTimeoutRef.current);
-      botTimeoutRef.current = null;
-    }
-    setGame((prev) => ({
-      ...prev,
-      gameId: null,
-      you: null,
-      turn: "X",
-      board: Array(9).fill(null),
-      opp: null,
-      roundWinsX: 0,
-      roundWinsO: 0,
-      roundNumber: 1,
-      matchTargetWins: 3,
-    }));
-    setBotState(initialBotState);
-    setWinLine(null);
-    hideModal();
-    setScreen("modes");
-    setStatus({ text: "Готово", blink: false });
-    if (!isFriendsFlow) {
-      setLobbyInviteCode("");
-      setIsFriendsLobbyState(false);
-    }
-    sendWs({ t: "queue.leave" });
-  }, [hideModal, sendWs]);
+  const toLobby = useCallback(
+    (options = {}) => {
+      const { isFriendsFlow = false } = options;
+      if (botTimeoutRef.current) {
+        clearTimeout(botTimeoutRef.current);
+        botTimeoutRef.current = null;
+      }
+      setGame((prev) => ({
+        ...prev,
+        gameId: null,
+        you: null,
+        turn: "X",
+        board: Array(9).fill(null),
+        opp: null,
+        roundWinsX: 0,
+        roundWinsO: 0,
+        roundNumber: 1,
+        matchTargetWins: 3,
+      }));
+      setBotState(initialBotState);
+      setWinLine(null);
+      hideModal();
+      setScreen("modes");
+      setStatus({ text: "Готово", blink: false });
+      if (!isFriendsFlow) {
+        setLobbyInviteCode("");
+        setIsFriendsLobbyState(false);
+      }
+      sendWs({ t: "queue.leave" });
+    },
+    [hideModal, sendWs],
+  );
 
   const handlePlayOnline = useCallback(() => {
     setLobbyInviteCode("");
@@ -1689,7 +1692,11 @@ export default function App() {
         const youWon = winnerMark && winnerMark === gameRef.current.you;
         const youLost = winnerMark && winnerMark !== gameRef.current.you;
 
-        if (msg.reason === "win" || msg.reason === "draw" || msg.reason === "match_end") {
+        if (
+          msg.reason === "win" ||
+          msg.reason === "draw" ||
+          msg.reason === "match_end"
+        ) {
           return;
         }
 
@@ -2001,8 +2008,7 @@ export default function App() {
   ];
 
   const activeModeId = modeCards[activeModeIndex]?.id || "";
-  const showInviteCode =
-    activeModeId === "friends" || isFriendsLobbyState;
+  const showInviteCode = activeModeId === "friends" || isFriendsLobbyState;
 
   const shouldShowBoard = Boolean(game.gameId || screen === "game");
   const isLobbyScreen = !shouldShowBoard;
@@ -2058,8 +2064,7 @@ export default function App() {
         onAction={onNavAction}
         onRating={loadRating}
         onProfile={loadProfile}
-        onInvite={createInvite}
-        hideLobbyActions={isLobbyScreen}
+        isGameScreen={!isLobbyScreen}
       />
       <Modal
         open={modalState.open}
