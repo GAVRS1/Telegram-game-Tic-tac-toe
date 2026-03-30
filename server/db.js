@@ -1,7 +1,10 @@
 // server/db.js
 import pg from "pg";
 import { ACHIEVEMENTS, evaluateAchievement } from "./achievements.js";
-import { generateUniqueReferralCode, normalizeReferralCode } from "./common/referral.js";
+import {
+  generateUniqueReferralCode,
+  normalizeReferralCode,
+} from "./common/referral.js";
 import { buildReferralPayload } from "./common/startPayload.js";
 
 let pool = null;
@@ -11,7 +14,11 @@ function buildReferralLink(refCode) {
   if (!refCode) return "";
   const payload = buildReferralPayload(refCode);
   if (!payload) return "";
-  const botUsername = String(process.env.TELEGRAM_BOT_USERNAME || process.env.BOT_USERNAME || DEFAULT_BOT_USERNAME).trim();
+  const botUsername = String(
+    process.env.TELEGRAM_BOT_USERNAME ||
+      process.env.BOT_USERNAME ||
+      DEFAULT_BOT_USERNAME,
+  ).trim();
   if (!botUsername) return "";
   return `https://t.me/${botUsername}/game?startapp=${encodeURIComponent(payload)}`;
 }
@@ -21,7 +28,10 @@ export function getPool() {
 
   const hasUrl = !!process.env.DATABASE_URL;
   const cfg = hasUrl
-    ? { connectionString: process.env.DATABASE_URL, ssl: parseSsl(process.env.PGSSL) }
+    ? {
+        connectionString: process.env.DATABASE_URL,
+        ssl: parseSsl(process.env.PGSSL),
+      }
     : {
         host: process.env.PGHOST,
         port: process.env.PGPORT ? Number(process.env.PGPORT) : 5432,
@@ -40,7 +50,8 @@ export function getPool() {
 function parseSsl(v) {
   if (typeof v === "string") {
     const s = v.trim().toLowerCase();
-    if (s === "require" || s === "true" || s === "1") return { rejectUnauthorized: false };
+    if (s === "require" || s === "true" || s === "1")
+      return { rejectUnauthorized: false };
   }
   return false;
 }
@@ -61,16 +72,34 @@ export async function ensureSchema() {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
-  await p.query(`CREATE INDEX IF NOT EXISTS idx_users_wins ON users (wins DESC, updated_at DESC);`);
-  await p.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS games_played INTEGER NOT NULL DEFAULT 0;`);
-  await p.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS losses INTEGER NOT NULL DEFAULT 0;`);
-  await p.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS draws INTEGER NOT NULL DEFAULT 0;`);
-  await p.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS invites_count INTEGER NOT NULL DEFAULT 0;`);
-  await p.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS coins_balance BIGINT NOT NULL DEFAULT 0;`);
+  await p.query(
+    `CREATE INDEX IF NOT EXISTS idx_users_wins ON users (wins DESC, updated_at DESC);`,
+  );
+  await p.query(
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS games_played INTEGER NOT NULL DEFAULT 0;`,
+  );
+  await p.query(
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS losses INTEGER NOT NULL DEFAULT 0;`,
+  );
+  await p.query(
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS draws INTEGER NOT NULL DEFAULT 0;`,
+  );
+  await p.query(
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS invites_count INTEGER NOT NULL DEFAULT 0;`,
+  );
+  await p.query(
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS coins_balance BIGINT NOT NULL DEFAULT 0;`,
+  );
   await p.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS ref_code TEXT;`);
-  await p.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS registration_source TEXT;`);
-  await p.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS registration_payload TEXT;`);
-  await p.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS registration_at TIMESTAMPTZ;`);
+  await p.query(
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS registration_source TEXT;`,
+  );
+  await p.query(
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS registration_payload TEXT;`,
+  );
+  await p.query(
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS registration_at TIMESTAMPTZ;`,
+  );
   await p.query(`
     UPDATE users
        SET ref_code = 'U' || UPPER(LPAD(TO_HEX(id::bigint), 12, '0'))
@@ -91,7 +120,9 @@ export async function ensureSchema() {
       END IF;
     END $$;
   `);
-  await p.query(`CREATE INDEX IF NOT EXISTS idx_users_ref_code ON users (ref_code);`);
+  await p.query(
+    `CREATE INDEX IF NOT EXISTS idx_users_ref_code ON users (ref_code);`,
+  );
   await p.query(`
     CREATE TABLE IF NOT EXISTS referrals (
       inviter_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -100,8 +131,12 @@ export async function ensureSchema() {
       UNIQUE (inviter_id, invited_id)
     );
   `);
-  await p.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_referrals_invited_unique ON referrals (invited_id);`);
-  await p.query(`CREATE INDEX IF NOT EXISTS idx_referrals_inviter ON referrals (inviter_id);`);
+  await p.query(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_referrals_invited_unique ON referrals (invited_id);`,
+  );
+  await p.query(
+    `CREATE INDEX IF NOT EXISTS idx_referrals_inviter ON referrals (inviter_id);`,
+  );
   await p.query(`CREATE TABLE IF NOT EXISTS coin_transactions (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -111,8 +146,12 @@ export async function ensureSchema() {
     meta JSONB NOT NULL DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );`);
-  await p.query(`CREATE INDEX IF NOT EXISTS idx_coin_transactions_user_created ON coin_transactions (user_id, created_at DESC);`);
-  await p.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_coin_transactions_event_key_unique ON coin_transactions (event_key) WHERE event_key IS NOT NULL;`);
+  await p.query(
+    `CREATE INDEX IF NOT EXISTS idx_coin_transactions_user_created ON coin_transactions (user_id, created_at DESC);`,
+  );
+  await p.query(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_coin_transactions_event_key_unique ON coin_transactions (event_key) WHERE event_key IS NOT NULL;`,
+  );
   await p.query(`
     CREATE TABLE IF NOT EXISTS achievements (
       id           TEXT PRIMARY KEY,
@@ -140,15 +179,33 @@ export async function ensureSchema() {
       PRIMARY KEY (user_id, achievement_id)
     );
   `);
-  await p.query(`ALTER TABLE achievements ADD COLUMN IF NOT EXISTS icon TEXT DEFAULT '';`);
-  await p.query(`ALTER TABLE achievements ADD COLUMN IF NOT EXISTS order_index INTEGER NOT NULL DEFAULT 0;`);
-  await p.query(`ALTER TABLE achievements ADD COLUMN IF NOT EXISTS extra JSONB NOT NULL DEFAULT '{}'::jsonb;`);
-  await p.query(`ALTER TABLE achievements ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();`);
-  await p.query(`ALTER TABLE user_achievements ADD COLUMN IF NOT EXISTS details JSONB NOT NULL DEFAULT '{}'::jsonb;`);
-  await p.query(`ALTER TABLE user_achievements ADD COLUMN IF NOT EXISTS progress_value NUMERIC NOT NULL DEFAULT 0;`);
-  await p.query(`ALTER TABLE user_achievements ADD COLUMN IF NOT EXISTS progress_percent NUMERIC NOT NULL DEFAULT 0;`);
-  await p.query(`ALTER TABLE user_achievements ADD COLUMN IF NOT EXISTS unlocked BOOLEAN NOT NULL DEFAULT false;`);
-  await p.query(`ALTER TABLE user_achievements ADD COLUMN IF NOT EXISTS unlocked_at TIMESTAMPTZ;`);
+  await p.query(
+    `ALTER TABLE achievements ADD COLUMN IF NOT EXISTS icon TEXT DEFAULT '';`,
+  );
+  await p.query(
+    `ALTER TABLE achievements ADD COLUMN IF NOT EXISTS order_index INTEGER NOT NULL DEFAULT 0;`,
+  );
+  await p.query(
+    `ALTER TABLE achievements ADD COLUMN IF NOT EXISTS extra JSONB NOT NULL DEFAULT '{}'::jsonb;`,
+  );
+  await p.query(
+    `ALTER TABLE achievements ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();`,
+  );
+  await p.query(
+    `ALTER TABLE user_achievements ADD COLUMN IF NOT EXISTS details JSONB NOT NULL DEFAULT '{}'::jsonb;`,
+  );
+  await p.query(
+    `ALTER TABLE user_achievements ADD COLUMN IF NOT EXISTS progress_value NUMERIC NOT NULL DEFAULT 0;`,
+  );
+  await p.query(
+    `ALTER TABLE user_achievements ADD COLUMN IF NOT EXISTS progress_percent NUMERIC NOT NULL DEFAULT 0;`,
+  );
+  await p.query(
+    `ALTER TABLE user_achievements ADD COLUMN IF NOT EXISTS unlocked BOOLEAN NOT NULL DEFAULT false;`,
+  );
+  await p.query(
+    `ALTER TABLE user_achievements ADD COLUMN IF NOT EXISTS unlocked_at TIMESTAMPTZ;`,
+  );
   await p.query(`
     CREATE TABLE IF NOT EXISTS invites (
       code          TEXT PRIMARY KEY,
@@ -159,20 +216,32 @@ export async function ensureSchema() {
       guest_user_id TEXT
     );
   `);
-  await p.query(`CREATE INDEX IF NOT EXISTS idx_invites_status ON invites (status);`);
-  await p.query(`CREATE INDEX IF NOT EXISTS idx_invites_host ON invites (host_user_id);`);
-  await p.query(`CREATE INDEX IF NOT EXISTS idx_invites_expires ON invites (expires_at);`);
+  await p.query(
+    `CREATE INDEX IF NOT EXISTS idx_invites_status ON invites (status);`,
+  );
+  await p.query(
+    `CREATE INDEX IF NOT EXISTS idx_invites_host ON invites (host_user_id);`,
+  );
+  await p.query(
+    `CREATE INDEX IF NOT EXISTS idx_invites_expires ON invites (expires_at);`,
+  );
   await ensureAchievementDefinitions(p);
   return true;
 }
 
 function isNumericId(id) {
-  return typeof id === 'number'
+  return typeof id === "number"
     ? Number.isFinite(id)
-    : typeof id === 'string' && /^[0-9]+$/.test(id);
+    : typeof id === "string" && /^[0-9]+$/.test(id);
 }
 
-export async function upsertUser({ id, username, avatar_url, registrationSource = null, registrationPayload = null }) {
+export async function upsertUser({
+  id,
+  username,
+  avatar_url,
+  registrationSource = null,
+  registrationPayload = null,
+}) {
   const p = getPool();
   if (!p) return;
   if (!isNumericId(id)) return;
@@ -193,11 +262,22 @@ export async function upsertUser({ id, username, avatar_url, registrationSource 
               registration_at = COALESCE(users.registration_at, CASE WHEN $5 IS NULL THEN NULL ELSE NOW() END),
               updated_at = NOW();
       `,
-        [n, username || null, avatar_url || null, refCode, registrationSource, registrationPayload]
+        [
+          n,
+          username || null,
+          avatar_url || null,
+          refCode,
+          registrationSource,
+          registrationPayload,
+        ],
       );
       return;
     } catch (error) {
-      if (error?.code === "23505" && typeof error.constraint === "string" && error.constraint.includes("ref_code")) {
+      if (
+        error?.code === "23505" &&
+        typeof error.constraint === "string" &&
+        error.constraint.includes("ref_code")
+      ) {
         continue;
       }
       throw error;
@@ -226,11 +306,15 @@ async function upsertStats(id, { games = 0, wins = 0, losses = 0, draws = 0 }) {
           draws        = users.draws + EXCLUDED.draws,
           updated_at   = NOW();
       `,
-        [n, games, wins, losses, draws, refCode]
+        [n, games, wins, losses, draws, refCode],
       );
       return;
     } catch (error) {
-      if (error?.code === "23505" && typeof error.constraint === "string" && error.constraint.includes("ref_code")) {
+      if (
+        error?.code === "23505" &&
+        typeof error.constraint === "string" &&
+        error.constraint.includes("ref_code")
+      ) {
         continue;
       }
       throw error;
@@ -249,7 +333,11 @@ export async function recordPlayerResult(id, result) {
   await refreshUserAchievements(id);
 }
 
-export async function recordMatchOutcome({ winnerId = null, loserId = null, drawIds = [] }) {
+export async function recordMatchOutcome({
+  winnerId = null,
+  loserId = null,
+  drawIds = [],
+}) {
   const tasks = [];
   if (winnerId) tasks.push(recordPlayerResult(winnerId, "win"));
   if (loserId) tasks.push(recordPlayerResult(loserId, "loss"));
@@ -270,7 +358,7 @@ export async function getLeaders(limit = 20) {
       ORDER BY wins DESC, updated_at DESC
       LIMIT $1;
     `,
-    [limit]
+    [limit],
   );
   return rows;
 }
@@ -292,7 +380,7 @@ export async function getLeadersByAchievements(limit = 20) {
       ORDER BY achievements_unlocked DESC, u.updated_at DESC
       LIMIT $1;
     `,
-    [limit]
+    [limit],
   );
   return rows;
 }
@@ -323,7 +411,24 @@ export async function getLeadersByInvites(limit = 20) {
       ORDER BY COALESCE(r.invites_count, 0) DESC, u.updated_at DESC
       LIMIT $1;
     `,
-    [limit]
+    [limit],
+  );
+  return rows;
+}
+
+export async function getLeadersByCoins(limit = 20) {
+  const p = getPool();
+  if (!p) return [];
+
+  const { rows } = await p.query(
+    `
+      SELECT id, username, avatar_url, games_played, wins, losses, draws, invites_count, coins_balance,
+             CASE WHEN games_played > 0 THEN ROUND((wins::decimal / games_played) * 100) ELSE 0 END AS win_rate
+      FROM users
+      ORDER BY coins_balance DESC, updated_at DESC
+      LIMIT $1;
+    `,
+    [limit],
   );
   return rows;
 }
@@ -339,7 +444,7 @@ export async function getInvitedFriendsCount(inviterId) {
       FROM referrals
       WHERE inviter_id = $1;
     `,
-    [Number(inviterId)]
+    [Number(inviterId)],
   );
   return Number(rows[0]?.invites_count || 0);
 }
@@ -358,7 +463,7 @@ export async function getUserProfile(id) {
     FROM users
     WHERE id = $1;
   `,
-    [n]
+    [n],
   );
   const profile = rows[0] || null;
   if (!profile) return null;
@@ -372,7 +477,7 @@ export async function getUserProfile(id) {
       WHERE r.inviter_id = $1
       ORDER BY r.created_at DESC, u.id DESC;
     `,
-    [n]
+    [n],
   );
   profile.invited_users = invitedUsersResult.rows || [];
   profile.invited_count = profile.invited_users.length;
@@ -383,7 +488,7 @@ export async function getUserProfile(id) {
     profile.achievements = achievements;
     profile.achievements_summary = {
       total: achievements.length,
-      unlocked: achievements.filter(a => a.unlocked).length,
+      unlocked: achievements.filter((a) => a.unlocked).length,
     };
   } catch (error) {
     console.error("getUserProfile achievements error:", error);
@@ -402,7 +507,7 @@ export async function createInvite({ code, hostUserId, expiresAt }) {
     ON CONFLICT (code) DO NOTHING
     RETURNING *;
   `,
-    [code, String(hostUserId), expiresAt]
+    [code, String(hostUserId), expiresAt],
   );
   return rows[0] || null;
 }
@@ -410,7 +515,9 @@ export async function createInvite({ code, hostUserId, expiresAt }) {
 export async function getInvite(code) {
   const p = getPool();
   if (!p) return null;
-  const { rows } = await p.query(`SELECT * FROM invites WHERE code = $1;`, [code]);
+  const { rows } = await p.query(`SELECT * FROM invites WHERE code = $1;`, [
+    code,
+  ]);
   return rows[0] || null;
 }
 
@@ -427,7 +534,7 @@ export async function getPendingInviteByHost(hostUserId) {
       ORDER BY created_at DESC
       LIMIT 1;
     `,
-    [String(hostUserId)]
+    [String(hostUserId)],
   );
   return rows[0] || null;
 }
@@ -439,7 +546,7 @@ export async function acceptInvite({ code, guestUserId }) {
   try {
     await client.query("BEGIN");
     const { rows } = await client.query(
-    `
+      `
     UPDATE invites
        SET status = 'accepted',
            guest_user_id = $2
@@ -448,7 +555,7 @@ export async function acceptInvite({ code, guestUserId }) {
        AND expires_at > NOW()
     RETURNING *;
   `,
-      [code, String(guestUserId)]
+      [code, String(guestUserId)],
     );
 
     const accepted = rows[0] || null;
@@ -488,7 +595,7 @@ export async function bindReferral({ inviterRefCode, invitedId }) {
         WHERE ref_code = $1
         LIMIT 1;
       `,
-      [normalizedRefCode]
+      [normalizedRefCode],
     );
     const inviter = Number(inviterLookup.rows[0]?.id);
     if (!Number.isFinite(inviter)) {
@@ -507,7 +614,7 @@ export async function bindReferral({ inviterRefCode, invitedId }) {
         WHERE invited_id = $1
         LIMIT 1;
       `,
-      [invited]
+      [invited],
     );
     if (alreadyLinked.rowCount > 0) {
       await client.query("ROLLBACK");
@@ -521,7 +628,7 @@ export async function bindReferral({ inviterRefCode, invitedId }) {
         ON CONFLICT (inviter_id, invited_id) DO NOTHING
         RETURNING inviter_id;
       `,
-      [inviter, invited]
+      [inviter, invited],
     );
 
     const linked = rows.length > 0;
@@ -537,7 +644,7 @@ export async function bindReferral({ inviterRefCode, invitedId }) {
                updated_at = NOW()
          WHERE id = $1;
       `,
-      [inviter]
+      [inviter],
     );
 
     await client.query("COMMIT");
@@ -561,7 +668,7 @@ export async function expireInvite(code) {
        AND status = 'pending'
     RETURNING *;
   `,
-    [code]
+    [code],
   );
   return rows[0] || null;
 }
@@ -591,14 +698,14 @@ async function ensureAchievementDefinitions(p) {
         def.icon || "",
         def.order || 0,
         JSON.stringify(def.extra || {}),
-      ]
+      ],
     );
   }
 
   if (ACHIEVEMENTS.length > 0) {
     await p.query(
       `DELETE FROM achievements WHERE id NOT IN (${ACHIEVEMENTS.map((_, i) => `$${i + 1}`).join(", ")});`,
-      ACHIEVEMENTS.map((a) => a.id)
+      ACHIEVEMENTS.map((a) => a.id),
     );
   }
 }
@@ -616,7 +723,7 @@ async function refreshUserAchievements(id) {
       FROM users
       WHERE id = $1;
     `,
-    [n]
+    [n],
   );
   const stats = rows[0];
   if (!stats) return;
@@ -645,7 +752,7 @@ async function refreshUserAchievements(id) {
         evaluation.progressPercent,
         evaluation.unlocked,
         JSON.stringify({ ...(def.extra || {}), ...(evaluation.details || {}) }),
-      ]
+      ],
     );
   }
 }
@@ -677,7 +784,7 @@ export async function getUserAchievements(id) {
         ON ua.achievement_id = a.id AND ua.user_id = $1
       ORDER BY a.order_index ASC, a.id ASC;
     `,
-    [n]
+    [n],
   );
 
   return rows.map((row) => ({
