@@ -1925,46 +1925,6 @@ export default function App() {
       title: "Играть онлайн",
       description: "Быстрый матч через общую очередь игроков.",
       onSelect: handlePlayOnline,
-      renderExtra: () => (
-        <div
-          className="mode-card__friend-actions"
-          onClick={(event) => event.stopPropagation()}
-        >
-          <button
-            type="button"
-            className="mode-card__friend-button"
-            onClick={createFriendsLobby}
-          >
-            Создать
-          </button>
-          {friendInviteInputVisible ? (
-            <div className="mode-card__friend-join">
-              <input
-                className="mode-card__friend-input"
-                value={friendInviteInput}
-                onChange={(event) => setFriendInviteInput(event.target.value)}
-                placeholder="Введите инвайт-код"
-                autoFocus
-              />
-              <button
-                type="button"
-                className="mode-card__friend-button mode-card__friend-button--alt"
-                onClick={joinFriendsLobby}
-              >
-                Войти
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              className="mode-card__friend-button mode-card__friend-button--alt"
-              onClick={() => setFriendInviteInputVisible(true)}
-            >
-              Присоединиться
-            </button>
-          )}
-        </div>
-      ),
     },
     {
       id: "friends",
@@ -2019,46 +1979,6 @@ export default function App() {
       title: "Играть с компьютером",
       description: "Сыграйте матч против компьютера.",
       onSelect: startComputerGame,
-      renderExtra: () => (
-        <div
-          className="mode-card__friend-actions"
-          onClick={(event) => event.stopPropagation()}
-        >
-          <button
-            type="button"
-            className="mode-card__friend-button"
-            onClick={createFriendsLobby}
-          >
-            Создать
-          </button>
-          {friendInviteInputVisible ? (
-            <div className="mode-card__friend-join">
-              <input
-                className="mode-card__friend-input"
-                value={friendInviteInput}
-                onChange={(event) => setFriendInviteInput(event.target.value)}
-                placeholder="Введите инвайт-код"
-                autoFocus
-              />
-              <button
-                type="button"
-                className="mode-card__friend-button mode-card__friend-button--alt"
-                onClick={joinFriendsLobby}
-              >
-                Войти
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              className="mode-card__friend-button mode-card__friend-button--alt"
-              onClick={() => setFriendInviteInputVisible(true)}
-            >
-              Присоединиться
-            </button>
-          )}
-        </div>
-      ),
     },
   ];
 
