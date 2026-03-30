@@ -226,7 +226,7 @@ function isReferralStartParam(value) {
   if (typeof value !== "string") return false;
   const normalized = value.trim();
   if (!normalized) return false;
-  return /^ref[_:-]?[0-9]+$/i.test(normalized) || /^[0-9]+$/.test(normalized);
+  return /^ref[_:-]?[a-z0-9]+$/i.test(normalized);
 }
 
 function resolveInviteCodeFromLocation() {

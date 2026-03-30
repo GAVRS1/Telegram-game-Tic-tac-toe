@@ -1,6 +1,7 @@
 // server/db.js
 import pg from "pg";
 import { ACHIEVEMENTS, evaluateAchievement } from "./achievements.js";
+import { generateUniqueReferralCode, normalizeReferralCode } from "./common/referral.js";
 
 let pool = null;
 
@@ -54,6 +55,28 @@ export async function ensureSchema() {
   await p.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS losses INTEGER NOT NULL DEFAULT 0;`);
   await p.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS draws INTEGER NOT NULL DEFAULT 0;`);
   await p.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS invites_count INTEGER NOT NULL DEFAULT 0;`);
+  await p.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS ref_code TEXT;`);
+  await p.query(`
+    UPDATE users
+       SET ref_code = 'U' || UPPER(LPAD(TO_HEX(id::bigint), 12, '0'))
+     WHERE ref_code IS NULL;
+  `);
+  await p.query(`ALTER TABLE users ALTER COLUMN ref_code SET NOT NULL;`);
+  await p.query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'users_ref_code_key'
+          AND conrelid = 'users'::regclass
+      ) THEN
+        ALTER TABLE users
+          ADD CONSTRAINT users_ref_code_key UNIQUE (ref_code);
+      END IF;
+    END $$;
+  `);
+  await p.query(`CREATE INDEX IF NOT EXISTS idx_users_ref_code ON users (ref_code);`);
   await p.query(`
     CREATE TABLE IF NOT EXISTS referrals (
       inviter_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -129,17 +152,29 @@ export async function upsertUser({ id, username, avatar_url }) {
   if (!isNumericId(id)) return;
 
   const n = Number(id);
-  await p.query(
-    `
-    INSERT INTO users (id, username, avatar_url)
-    VALUES ($1, $2, $3)
-    ON CONFLICT (id) DO UPDATE
-      SET username = EXCLUDED.username,
-          avatar_url = EXCLUDED.avatar_url,
-          updated_at = NOW();
-  `,
-    [n, username || null, avatar_url || null]
-  );
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const refCode = await generateUniqueReferralCode(p);
+    try {
+      await p.query(
+        `
+        INSERT INTO users (id, username, avatar_url, ref_code)
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT (id) DO UPDATE
+          SET username = EXCLUDED.username,
+              avatar_url = EXCLUDED.avatar_url,
+              updated_at = NOW();
+      `,
+        [n, username || null, avatar_url || null, refCode]
+      );
+      return;
+    } catch (error) {
+      if (error?.code === "23505" && typeof error.constraint === "string" && error.constraint.includes("ref_code")) {
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw new Error("Could not allocate unique ref_code for user");
 }
 
 async function upsertStats(id, { games = 0, wins = 0, losses = 0, draws = 0 }) {
@@ -148,19 +183,31 @@ async function upsertStats(id, { games = 0, wins = 0, losses = 0, draws = 0 }) {
   if (!isNumericId(id)) return;
 
   const n = Number(id);
-  await p.query(
-    `
-    INSERT INTO users (id, games_played, wins, losses, draws)
-    VALUES ($1, $2, $3, $4, $5)
-    ON CONFLICT (id) DO UPDATE SET
-      games_played = users.games_played + EXCLUDED.games_played,
-      wins         = users.wins + EXCLUDED.wins,
-      losses       = users.losses + EXCLUDED.losses,
-      draws        = users.draws + EXCLUDED.draws,
-      updated_at   = NOW();
-  `,
-    [n, games, wins, losses, draws]
-  );
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const refCode = await generateUniqueReferralCode(p);
+    try {
+      await p.query(
+        `
+        INSERT INTO users (id, games_played, wins, losses, draws, ref_code)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        ON CONFLICT (id) DO UPDATE SET
+          games_played = users.games_played + EXCLUDED.games_played,
+          wins         = users.wins + EXCLUDED.wins,
+          losses       = users.losses + EXCLUDED.losses,
+          draws        = users.draws + EXCLUDED.draws,
+          updated_at   = NOW();
+      `,
+        [n, games, wins, losses, draws, refCode]
+      );
+      return;
+    } catch (error) {
+      if (error?.code === "23505" && typeof error.constraint === "string" && error.constraint.includes("ref_code")) {
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw new Error("Could not allocate unique ref_code for stats upsert");
 }
 
 export async function recordPlayerResult(id, result) {
@@ -366,18 +413,6 @@ export async function acceptInvite({ code, guestUserId }) {
       return null;
     }
 
-    if (isNumericId(accepted.host_user_id)) {
-      await client.query(
-        `
-          UPDATE users
-             SET invites_count = invites_count + 1,
-                 updated_at = NOW()
-           WHERE id = $1;
-        `,
-        [Number(accepted.host_user_id)]
-      );
-    }
-
     await client.query("COMMIT");
     return accepted;
   } catch (error) {
@@ -388,18 +423,38 @@ export async function acceptInvite({ code, guestUserId }) {
   }
 }
 
-export async function bindReferral({ inviterId, invitedId }) {
+export async function bindReferral({ inviterRefCode, invitedId }) {
   const p = getPool();
   if (!p) return { linked: false, reason: "db_unavailable" };
-  if (!isNumericId(inviterId) || !isNumericId(invitedId)) return { linked: false, reason: "invalid_id" };
+  if (!isNumericId(invitedId)) return { linked: false, reason: "invalid_id" };
 
-  const inviter = Number(inviterId);
+  const normalizedRefCode = normalizeReferralCode(inviterRefCode);
+  if (!normalizedRefCode) return { linked: false, reason: "invalid_ref_code" };
+
   const invited = Number(invitedId);
-  if (inviter === invited) return { linked: false, reason: "self_referral" };
 
   const client = await p.connect();
   try {
     await client.query("BEGIN");
+
+    const inviterLookup = await client.query(
+      `
+        SELECT id
+        FROM users
+        WHERE ref_code = $1
+        LIMIT 1;
+      `,
+      [normalizedRefCode]
+    );
+    const inviter = Number(inviterLookup.rows[0]?.id);
+    if (!Number.isFinite(inviter)) {
+      await client.query("ROLLBACK");
+      return { linked: false, reason: "inviter_not_found" };
+    }
+    if (inviter === invited) {
+      await client.query("ROLLBACK");
+      return { linked: false, reason: "self_referral" };
+    }
 
     const alreadyLinked = await client.query(
       `
