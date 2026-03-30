@@ -14,39 +14,57 @@ const LABELS = {
   rematch: "Реванш",
 };
 
-export function Nav({ mode, onAction, onRating, onProfile, onInvite, hideLobbyActions = false }) {
+export function Nav({
+  mode,
+  onAction,
+  onRating,
+  onProfile,
+  isGameScreen = false,
+}) {
   const label = LABELS[mode] || "Действие";
-  const canInvite = !hideLobbyActions && (mode === "find" || mode === "waiting");
-  const showCenterAction = !hideLobbyActions;
+  const showCenterAction =
+    isGameScreen && (mode === "resign" || mode === "rematch");
 
   return (
-    <div className="navbar navbar--lg" id="navbar">
-      <button className="navbtn" id="tabRating" aria-label="Рейтинг" title="Рейтинг" onClick={onRating}>
+    <div
+      className={`navbar navbar--lg ${showCenterAction ? "" : "navbar--two-actions"}`.trim()}
+      id="navbar"
+    >
+      <button
+        className="navbtn"
+        id="tabRating"
+        aria-label="Рейтинг"
+        title="Рейтинг"
+        onClick={onRating}
+      >
         <div className="sym">
           <img src="/img/leaderboard.svg" alt="Рейтинг" className="icon" />
         </div>
       </button>
-      {canInvite ? (
-        <button className="navbtn" id="tabInvite" aria-label="Пригласить" title="Пригласить" onClick={onInvite}>
-          <div className="sym" aria-hidden="true" style={{ fontSize: "28px" }}>🔗</div>
-        </button>
-      ) : null}
       {showCenterAction ? (
         <button
-          className={`navbtn centerAction ${mode === "waiting" ? "is-waiting" : ""} ${
-            mode === "resign" || mode === "rematch" ? "active" : ""
-          }`}
+          className="navbtn centerAction active"
           id="tabGame"
           aria-label={label}
           title={label}
           onClick={() => onAction(mode)}
         >
           <div className="sym" id="centerSym">
-            <img src={ICONS[mode] || ICONS.find} alt="Действие" className="icon-lg" />
+            <img
+              src={ICONS[mode] || ICONS.find}
+              alt="Действие"
+              className="icon-lg"
+            />
           </div>
         </button>
       ) : null}
-      <button className="navbtn" id="tabProfile" aria-label="Профиль" title="Профиль" onClick={onProfile}>
+      <button
+        className="navbtn"
+        id="tabProfile"
+        aria-label="Профиль"
+        title="Профиль"
+        onClick={onProfile}
+      >
         <div className="sym">
           <img src="/img/profile-info.svg" alt="Профиль" className="icon" />
         </div>
