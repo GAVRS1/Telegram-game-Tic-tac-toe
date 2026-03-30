@@ -19,6 +19,7 @@ export function Board({
   onAuthorClick,
   boardContent = null,
   modesLayout = false,
+  viewTransitionClass = "",
   lobbyInviteCode = "",
   onInviteCodeClick,
 }) {
@@ -45,7 +46,9 @@ export function Board({
   const oppSeriesWins = game?.you === "X" ? roundWinsO : roundWinsX;
 
   return (
-    <div className={`wrap ${modesLayout ? "wrap--modes" : "wrap--game"}`}>
+    <div
+      className={`wrap ${modesLayout ? "wrap--modes" : "wrap--game"} ${viewTransitionClass}`.trim()}
+    >
       <div className="top-meta">
         <button className="author-badge" type="button" title="Автор 0xGavrs" onClick={onAuthorClick}>
           <img src="https://t.me/i/userpic/320/rsgavrs.jpg" alt="0xGavrs" loading="lazy" />
