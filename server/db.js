@@ -2,8 +2,19 @@
 import pg from "pg";
 import { ACHIEVEMENTS, evaluateAchievement } from "./achievements.js";
 import { generateUniqueReferralCode, normalizeReferralCode } from "./common/referral.js";
+import { buildReferralPayload } from "./common/startPayload.js";
 
 let pool = null;
+const DEFAULT_BOT_USERNAME = "TTToeONL_bot";
+
+function buildReferralLink(refCode) {
+  if (!refCode) return "";
+  const payload = buildReferralPayload(refCode);
+  if (!payload) return "";
+  const botUsername = String(process.env.TELEGRAM_BOT_USERNAME || process.env.BOT_USERNAME || DEFAULT_BOT_USERNAME).trim();
+  if (!botUsername) return "";
+  return `https://t.me/${botUsername}/game?startapp=${encodeURIComponent(payload)}`;
+}
 
 export function getPool() {
   if (pool) return pool;
@@ -328,7 +339,7 @@ export async function getUserProfile(id) {
   const n = Number(id);
   const { rows } = await p.query(
     `
-    SELECT id, username, avatar_url, games_played, wins, losses, draws,
+    SELECT id, username, avatar_url, games_played, wins, losses, draws, ref_code,
           created_at, updated_at,
            CASE WHEN games_played > 0 THEN ROUND((wins::decimal / games_played) * 100) ELSE 0 END AS win_rate
     FROM users
@@ -338,6 +349,20 @@ export async function getUserProfile(id) {
   );
   const profile = rows[0] || null;
   if (!profile) return null;
+  profile.ref_link = buildReferralLink(profile.ref_code);
+
+  const invitedUsersResult = await p.query(
+    `
+      SELECT u.id, u.username, u.avatar_url, r.created_at
+      FROM referrals r
+      INNER JOIN users u ON u.id = r.invited_id
+      WHERE r.inviter_id = $1
+      ORDER BY r.created_at DESC, u.id DESC;
+    `,
+    [n]
+  );
+  profile.invited_users = invitedUsersResult.rows || [];
+  profile.invited_count = profile.invited_users.length;
 
   try {
     await refreshUserAchievements(n);

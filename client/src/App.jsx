@@ -858,6 +858,30 @@ export default function App() {
     const achievements = Array.isArray(profile?.achievements) ? profile.achievements : [];
     const total = achievements.length;
     const unlocked = achievements.filter((item) => item?.unlocked).length;
+    const invitedUsers = Array.isArray(profile?.invited_users) ? profile.invited_users : [];
+    const invitedCount = Number(profile?.invited_count ?? invitedUsers.length ?? 0);
+    const referralLink = typeof profile?.ref_link === "string" ? profile.ref_link.trim() : "";
+
+    const handleCopyReferralLink = async () => {
+      if (!referralLink) {
+        notifications.info("Реферальная ссылка пока недоступна.");
+        return;
+      }
+      try {
+        await navigator.clipboard?.writeText(referralLink);
+        notifications.success("Реферальная ссылка скопирована");
+      } catch {
+        notifications.info("Не удалось скопировать ссылку. Скопируйте её вручную.");
+      }
+    };
+
+    const handleShareReferralLink = async () => {
+      if (!referralLink) {
+        notifications.info("Реферальная ссылка пока недоступна.");
+        return;
+      }
+      await shareInviteLink(referralLink);
+    };
 
     const achievementsBlock = (
       <div className="achievements-section">
@@ -964,6 +988,67 @@ export default function App() {
             </div>
           ))}
         </div>
+        <div style={{ border: "1px solid var(--line)", borderRadius: "10px", padding: "10px", display: "flex", flexDirection: "column", gap: "10px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            <div style={{ fontSize: "12px", color: "var(--muted)" }}>Ваша реферальная ссылка</div>
+            {referralLink ? (
+              <div style={{ wordBreak: "break-all", fontSize: "13px" }}>{referralLink}</div>
+            ) : (
+              <div style={{ fontSize: "13px", color: "var(--muted)" }}>
+                Ссылка появится после загрузки профиля.
+              </div>
+            )}
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              <button type="button" className="btn" onClick={handleCopyReferralLink}>Copy</button>
+              <button type="button" className="btn primary" onClick={handleShareReferralLink}>Share</button>
+            </div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            <div style={{ fontSize: "12px", color: "var(--muted)" }}>Приглашено друзей</div>
+            <div style={{ fontWeight: 800, fontSize: "18px" }}>{Number.isFinite(invitedCount) ? invitedCount : 0}</div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            <div style={{ fontSize: "12px", color: "var(--muted)" }}>Список приглашённых</div>
+            {invitedUsers.length === 0 ? (
+              <div style={{ fontSize: "13px", color: "var(--muted)" }}>
+                Пока никого не приглашено. Поделитесь ссылкой с друзьями, чтобы увидеть их здесь.
+              </div>
+            ) : (
+              invitedUsers.map((invitedUser) => {
+                const username = typeof invitedUser?.username === "string" && invitedUser.username.trim()
+                  ? invitedUser.username
+                  : `ID ${invitedUser?.id ?? ""}`;
+                return (
+                  <div
+                    key={`${invitedUser?.id || "unknown"}-${invitedUser?.created_at || "date"}`}
+                    style={{
+                      border: "1px solid var(--line)",
+                      borderRadius: "10px",
+                      padding: "8px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <img
+                      src={invitedUser?.avatar_url || "/img/logo.svg"}
+                      alt={username}
+                      style={{ width: "30px", height: "30px", borderRadius: "50%", objectFit: "cover", border: "1px solid var(--line)" }}
+                    />
+                    <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+                      <div style={{ fontSize: "13px", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {username}
+                      </div>
+                      <div style={{ fontSize: "12px", color: "var(--muted)" }}>
+                        Приглашён: {formatDate(invitedUser?.created_at) || "дата неизвестна"}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
         {achievementsBlock}
         {profileResult?.error ? (
           <div style={{ color: "var(--warn)", fontSize: "12px" }}>
@@ -986,7 +1071,7 @@ export default function App() {
       },
       secondary: { show: false },
     });
-  }, [hideModal, me, setModal]);
+  }, [hideModal, me, notifications, setModal, shareInviteLink]);
 
   const sendHello = useCallback(() => {
     const currentMe = meRef.current;
