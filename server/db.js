@@ -66,6 +66,7 @@ export async function ensureSchema() {
   await p.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS losses INTEGER NOT NULL DEFAULT 0;`);
   await p.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS draws INTEGER NOT NULL DEFAULT 0;`);
   await p.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS invites_count INTEGER NOT NULL DEFAULT 0;`);
+  await p.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS coins_balance BIGINT NOT NULL DEFAULT 0;`);
   await p.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS ref_code TEXT;`);
   await p.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS registration_source TEXT;`);
   await p.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS registration_payload TEXT;`);
@@ -101,6 +102,17 @@ export async function ensureSchema() {
   `);
   await p.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_referrals_invited_unique ON referrals (invited_id);`);
   await p.query(`CREATE INDEX IF NOT EXISTS idx_referrals_inviter ON referrals (inviter_id);`);
+  await p.query(`CREATE TABLE IF NOT EXISTS coin_transactions (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    amount BIGINT NOT NULL,
+    reason TEXT NOT NULL,
+    event_key TEXT,
+    meta JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );`);
+  await p.query(`CREATE INDEX IF NOT EXISTS idx_coin_transactions_user_created ON coin_transactions (user_id, created_at DESC);`);
+  await p.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_coin_transactions_event_key_unique ON coin_transactions (event_key) WHERE event_key IS NOT NULL;`);
   await p.query(`
     CREATE TABLE IF NOT EXISTS achievements (
       id           TEXT PRIMARY KEY,
@@ -252,7 +264,7 @@ export async function getLeaders(limit = 20) {
 
   const { rows } = await p.query(
     `
-      SELECT id, username, avatar_url, games_played, wins, losses, draws, invites_count,
+      SELECT id, username, avatar_url, games_played, wins, losses, draws, invites_count, coins_balance,
              CASE WHEN games_played > 0 THEN ROUND((wins::decimal / games_played) * 100) ELSE 0 END AS win_rate
       FROM users
       ORDER BY wins DESC, updated_at DESC
@@ -269,7 +281,7 @@ export async function getLeadersByAchievements(limit = 20) {
 
   const { rows } = await p.query(
     `
-      SELECT u.id, u.username, u.avatar_url, u.games_played, u.wins, u.losses, u.draws, u.invites_count,
+      SELECT u.id, u.username, u.avatar_url, u.games_played, u.wins, u.losses, u.draws, u.invites_count, u.coins_balance,
              COUNT(ua.achievement_id)::INT AS achievements_unlocked,
              CASE WHEN u.games_played > 0 THEN ROUND((u.wins::decimal / u.games_played) * 100) ELSE 0 END AS win_rate
       FROM users u
@@ -299,6 +311,7 @@ export async function getLeadersByInvites(limit = 20) {
         u.wins,
         u.losses,
         u.draws,
+        u.coins_balance,
         COALESCE(r.invites_count, 0)::INT AS invites_count,
         CASE WHEN u.games_played > 0 THEN ROUND((u.wins::decimal / u.games_played) * 100) ELSE 0 END AS win_rate
       FROM users u
@@ -339,7 +352,7 @@ export async function getUserProfile(id) {
   const n = Number(id);
   const { rows } = await p.query(
     `
-    SELECT id, username, avatar_url, games_played, wins, losses, draws, ref_code,
+    SELECT id, username, avatar_url, games_played, wins, losses, draws, coins_balance, ref_code,
           created_at, updated_at,
            CASE WHEN games_played > 0 THEN ROUND((wins::decimal / games_played) * 100) ELSE 0 END AS win_rate
     FROM users
