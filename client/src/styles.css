@@ -10,6 +10,8 @@
   --warn: #f59e0b;
   --x: #60a5fa;
   --o: #f472b6;
+  --dot-bg: rgba(148, 163, 184, 0.55);
+  --dot-active-bg: #22c55e;
   --navbar-height: 62px;
   --tg-viewport-height: 100dvh;
   --tg-viewport-width: 100vw;
@@ -277,14 +279,21 @@ body {
   width: 8px;
   height: 8px;
   border-radius: 999px;
-  border: none;
-  background: rgba(148, 163, 184, 0.38);
+  border: 1px solid rgba(226, 232, 240, 0.35);
+  background-color: var(--dot-bg);
+  opacity: 0.75;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition:
+    background-color 0.25s ease,
+    transform 0.25s ease,
+    opacity 0.25s ease;
 }
 .modes-carousel__dot.is-active {
   width: 22px;
-  background: linear-gradient(90deg, #22c55e, #60a5fa);
+  border-color: rgba(34, 197, 94, 0.9);
+  background-color: var(--dot-active-bg);
+  opacity: 1;
+  transform: scale(1.02);
 }
 
 @keyframes cardFloat {
