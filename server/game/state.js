@@ -89,6 +89,7 @@ export const createGameState = ({ recordMatchOutcome, toWs, games }) => {
               event_key: eventKey,
               source: "match_win",
               match_id: gameId,
+              matchId: gameId,
             },
           });
           logCoinAward({
@@ -98,6 +99,7 @@ export const createGameState = ({ recordMatchOutcome, toWs, games }) => {
             reason: COIN_REASONS.MATCH_WIN,
             amount: MATCH_WIN_COIN_REWARD,
             result: awardResult.alreadyAwarded ? "already_awarded" : "awarded",
+            meta: { matchId: gameId },
           });
         } catch (error) {
           logCoinAward({
@@ -108,6 +110,7 @@ export const createGameState = ({ recordMatchOutcome, toWs, games }) => {
             amount: MATCH_WIN_COIN_REWARD,
             result: "error",
             error,
+            meta: { matchId: gameId },
           });
         }
       } else if (reason === "draw") {
@@ -126,6 +129,7 @@ export const createGameState = ({ recordMatchOutcome, toWs, games }) => {
                 event_key: achievementEventKey,
                 source: "achievement_unlock",
                 achievement_id: achievementId,
+                achievementId: achievementId,
               },
             });
             logCoinAward({
@@ -135,6 +139,7 @@ export const createGameState = ({ recordMatchOutcome, toWs, games }) => {
               reason: COIN_REASONS.ACHIEVEMENT_UNLOCK,
               amount: ACHIEVEMENT_UNLOCK_COIN_REWARD,
               result: awardResult.alreadyAwarded ? "already_awarded" : "awarded",
+              meta: { achievementId },
             });
           } catch (error) {
             logCoinAward({
@@ -145,6 +150,7 @@ export const createGameState = ({ recordMatchOutcome, toWs, games }) => {
               amount: ACHIEVEMENT_UNLOCK_COIN_REWARD,
               result: "error",
               error,
+              meta: { achievementId },
             });
           }
         }

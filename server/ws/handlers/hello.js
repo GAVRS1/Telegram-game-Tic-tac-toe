@@ -4,7 +4,7 @@ import { sanitizeString, validateHelloMessage } from "../../validation.js";
 import { buildTelegramName, sanitizeUsername } from "../../common/sanitize.js";
 import { parseStartPayload } from "../../common/startPayload.js";
 import { awardCoins, COIN_REASONS } from "../../services/coins.js";
-import { logCoinAward } from "../../monitoring.js";
+import { logCoinAward, logReferralEvent } from "../../monitoring.js";
 
 const REFERRAL_LINK_COIN_REWARD = Number(process.env.COIN_REWARD_REFERRAL_LINK || 75);
 
@@ -67,6 +67,17 @@ export const createHelloHandler = ({ wsByUid, userByWs, broadcastOnlineStats }) 
     }
   }
 
+  if (parsedStartPayload.kind === "referral") {
+    logReferralEvent("referral_link_opened", {
+      userId: uid,
+      verifiedSession: profile.isVerified,
+      meta: {
+        refPayload: parsedStartPayload.raw,
+        refCode: parsedStartPayload.refCode,
+      },
+    });
+  }
+
   if (parsedStartPayload.kind === "invalid") {
     console.warn(`[HELLO] uid=${uid} rejected start payload: ${parsedStartPayload.reason}`);
   }
@@ -76,6 +87,14 @@ export const createHelloHandler = ({ wsByUid, userByWs, broadcastOnlineStats }) 
 
   if (!profile.isVerified && parsedStartPayload.kind === "referral") {
     // Referrals are only attributed for verified Telegram sessions.
+    logReferralEvent("referral_rejected_reason", {
+      userId: uid,
+      reason: "unverified_session",
+      meta: {
+        refPayload: parsedStartPayload.raw,
+        refCode: parsedStartPayload.refCode,
+      },
+    });
     inviterRefCode = null;
   }
 
@@ -121,6 +140,17 @@ export const createHelloHandler = ({ wsByUid, userByWs, broadcastOnlineStats }) 
           const inviterId = referralResult.inviterId;
           const invitedId = referralResult.invitedId;
           const eventKey = `referral:${inviterId}:${invitedId}`;
+          const referralMeta = {
+            refPayload: parsedStartPayload.raw,
+            refCode: inviterRefCode,
+            invitedId,
+          };
+          logReferralEvent("referral_bound", {
+            userId: uid,
+            inviterId,
+            invitedId,
+            meta: referralMeta,
+          });
           try {
             const awardResult = await awardCoins({
               userId: inviterId,
@@ -130,6 +160,7 @@ export const createHelloHandler = ({ wsByUid, userByWs, broadcastOnlineStats }) 
                 event_key: eventKey,
                 source: "referral_link",
                 invited_id: invitedId,
+                ref_payload: parsedStartPayload.raw,
               },
             });
             logCoinAward({
@@ -139,6 +170,7 @@ export const createHelloHandler = ({ wsByUid, userByWs, broadcastOnlineStats }) 
               reason: COIN_REASONS.REFERRAL_SIGNUP,
               amount: REFERRAL_LINK_COIN_REWARD,
               result: awardResult.alreadyAwarded ? "already_awarded" : "awarded",
+              meta: referralMeta,
             });
           } catch (error) {
             logCoinAward({
@@ -149,9 +181,18 @@ export const createHelloHandler = ({ wsByUid, userByWs, broadcastOnlineStats }) 
               amount: REFERRAL_LINK_COIN_REWARD,
               result: "error",
               error,
+              meta: referralMeta,
             });
           }
         } else {
+          logReferralEvent("referral_rejected_reason", {
+            userId: uid,
+            reason: referralResult.reason || "unknown",
+            meta: {
+              refPayload: parsedStartPayload.raw,
+              refCode: inviterRefCode,
+            },
+          });
           console.log(
             `[REFERRAL] uid=${uid} skipped ref=${inviterRefCode} reason=${referralResult.reason || "unknown"}`
           );

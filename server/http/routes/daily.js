@@ -44,6 +44,7 @@ export const registerDailyRoute = ({ app }) => {
         reason: COIN_REASONS.DAILY_TASK_COMPLETE,
         amount: DAILY_TASK_COIN_REWARD,
         result: result.alreadyAwarded ? "already_awarded" : "awarded",
+        meta: { dailyKey, date: dateKey },
       });
 
       return res.json({ ok: true, ...result });
@@ -56,6 +57,10 @@ export const registerDailyRoute = ({ app }) => {
         amount: DAILY_TASK_COIN_REWARD,
         result: "error",
         error,
+        meta: {
+          dailyKey: String(req.body?.daily_key || req.body?.dailyKey || "default").trim().toLowerCase(),
+          date: getUtcDateKey(req.body?.date),
+        },
       });
       console.error("daily complete error:", error);
       return res.status(500).json({ ok: false });

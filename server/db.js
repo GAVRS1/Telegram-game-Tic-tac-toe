@@ -162,6 +162,17 @@ export async function ensureSchema() {
     `CREATE UNIQUE INDEX IF NOT EXISTS idx_coin_transactions_event_key_unique ON coin_transactions (event_key);`,
   );
   await p.query(`
+    CREATE TABLE IF NOT EXISTS monitoring_events (
+      id BIGSERIAL PRIMARY KEY,
+      event_name TEXT NOT NULL,
+      meta JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+  await p.query(
+    `CREATE INDEX IF NOT EXISTS idx_monitoring_events_name_created ON monitoring_events (event_name, created_at DESC);`,
+  );
+  await p.query(`
     CREATE TABLE IF NOT EXISTS achievements (
       id           TEXT PRIMARY KEY,
       name         TEXT NOT NULL,
@@ -855,4 +866,62 @@ export async function getUserAchievements(id) {
     extra: row.extra || {},
     details: row.details || {},
   }));
+}
+
+
+export async function getAdminReferralDiagnostics() {
+  const p = getPool();
+  if (!p) {
+    return {
+      referral_link_opened: 0,
+      referral_bound: 0,
+      successful_registrations: 0,
+      coins_by_source: [],
+    };
+  }
+
+  const [linkOpened, bound, successfulRegs, coinsBySource] = await Promise.all([
+    p.query(
+      `
+        SELECT COUNT(*)::BIGINT AS total
+        FROM monitoring_events
+        WHERE event_name = 'referral_link_opened';
+      `,
+    ),
+    p.query(
+      `
+        SELECT COUNT(*)::BIGINT AS total
+        FROM monitoring_events
+        WHERE event_name = 'referral_bound';
+      `,
+    ),
+    p.query(
+      `
+        SELECT COUNT(*)::BIGINT AS total
+        FROM referrals;
+      `,
+    ),
+    p.query(
+      `
+        SELECT
+          COALESCE(NULLIF(meta->>'source', ''), reason, 'unknown') AS source,
+          COUNT(*)::BIGINT AS transactions,
+          COALESCE(SUM(amount), 0)::BIGINT AS coins_awarded
+        FROM coin_transactions
+        GROUP BY 1
+        ORDER BY coins_awarded DESC, transactions DESC;
+      `,
+    ),
+  ]);
+
+  return {
+    referral_link_opened: Number(linkOpened.rows[0]?.total || 0),
+    referral_bound: Number(bound.rows[0]?.total || 0),
+    successful_registrations: Number(successfulRegs.rows[0]?.total || 0),
+    coins_by_source: coinsBySource.rows.map((row) => ({
+      source: row.source,
+      transactions: Number(row.transactions || 0),
+      coins_awarded: Number(row.coins_awarded || 0),
+    })),
+  };
 }
