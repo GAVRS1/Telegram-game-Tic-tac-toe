@@ -12,6 +12,9 @@
   --o: #f472b6;
   --dot-bg: rgba(148, 163, 184, 0.55);
   --dot-active-bg: #22c55e;
+  --anim-fast: 160ms;
+  --anim-base: 280ms;
+  --anim-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --navbar-height: 62px;
   --tg-viewport-height: 100dvh;
   --tg-viewport-width: 100vw;
@@ -107,11 +110,11 @@ body {
   gap: 16px;
   justify-content: flex-start;
   transition:
-    transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
-    opacity 0.25s ease,
-    border-color 0.3s ease,
-    box-shadow 0.3s ease,
-    filter 0.3s ease;
+    transform var(--anim-base) var(--anim-ease),
+    opacity var(--anim-fast) var(--anim-ease),
+    border-color var(--anim-base) var(--anim-ease),
+    box-shadow var(--anim-base) var(--anim-ease),
+    filter var(--anim-base) var(--anim-ease);
   cursor: pointer;
   position: relative;
   overflow: hidden;
@@ -326,6 +329,15 @@ body {
 .wrap--game {
   justify-content: flex-start;
 }
+.wrap--view-enter {
+  animation: viewFadeIn var(--anim-base) var(--anim-ease);
+}
+.wrap--view-game.wrap--view-enter {
+  animation-name: viewFadeInGame;
+}
+.wrap--view-modes.wrap--view-enter {
+  animation-name: viewFadeInModes;
+}
 .card {
   width: 100%;
   background: var(--card);
@@ -337,6 +349,11 @@ body {
   flex-direction: column;
   gap: 8px;
   min-height: 0;
+  transition:
+    transform var(--anim-base) var(--anim-ease),
+    opacity var(--anim-fast) var(--anim-ease),
+    border-color var(--anim-base) var(--anim-ease),
+    box-shadow var(--anim-base) var(--anim-ease);
 }
 .card--game {
   flex: 1;
@@ -471,6 +488,10 @@ body {
   color: var(--text);
   opacity: 0.95;
   font-size: 14px;
+  transition:
+    opacity var(--anim-fast) var(--anim-ease),
+    color var(--anim-base) var(--anim-ease),
+    transform var(--anim-base) var(--anim-ease);
 }
 .blink {
   animation: blink 1s linear infinite;
@@ -490,6 +511,10 @@ body {
   gap: clamp(6px, 1.2vmin, 10px);
   margin: 0 auto;
   max-height: 100%;
+  transition:
+    transform var(--anim-base) var(--anim-ease),
+    opacity var(--anim-fast) var(--anim-ease),
+    box-shadow var(--anim-base) var(--anim-ease);
 }
 .card--game > .board {
   min-height: 0;
@@ -591,6 +616,12 @@ body {
   align-items: center;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
   z-index: 900;
+  transition:
+    transform var(--anim-base) var(--anim-ease),
+    opacity var(--anim-fast) var(--anim-ease),
+    background-color var(--anim-base) var(--anim-ease),
+    border-color var(--anim-base) var(--anim-ease),
+    box-shadow var(--anim-base) var(--anim-ease);
 }
 
 .navbar--two-actions {
@@ -1140,6 +1171,37 @@ body {
   }
 }
 
+@keyframes viewFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes viewFadeInGame {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes viewFadeInModes {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* ====== АДАПТИВ ====== */
 @media (max-width: 520px) {
   :root {
@@ -1300,5 +1362,26 @@ body {
       300px,
       calc(var(--tg-viewport-height) - var(--navbar-height) - 150px)
     );
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --anim-fast: 1ms;
+    --anim-base: 1ms;
+  }
+  .wrap--view-enter {
+    animation: none;
+  }
+  .mode-card,
+  .card,
+  .board,
+  .navbar,
+  .status-line {
+    transition: none !important;
+  }
+  .blink,
+  .mode-card--active .mode-card__image {
+    animation: none !important;
   }
 }
