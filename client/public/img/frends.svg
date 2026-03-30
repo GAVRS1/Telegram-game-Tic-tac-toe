@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48" fill="none" role="img" aria-label="Профиль игрока">
+  <title>Профиль игрока</title>
+
+  <defs>
+    <g id="person-icon">
+      <circle
+        cx="12"
+        cy="8"
+        r="3.25"
+        stroke="#FFFFFF"
+        stroke-width="1.8"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+      <path
+        d="M5.75 18.25c.7-2.9 3.4-4.75 6.25-4.75s5.55 1.85 6.25 4.75"
+        stroke="#00BFFF"
+        stroke-width="1.8"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+    </g>
+  </defs>
+
+  <!-- левый -->
+  <g transform="translate(-1.24 14.2)">
+    <g transform="scale(0.92)">
+      <use href="#person-icon" />
+    </g>
+  </g>
+
+  <!-- центральный -->
+  <g transform="translate(6.08 6)">
+    <g transform="scale(1.46)">
+      <use href="#person-icon" />
+    </g>
+  </g>
+
+  <!-- правый -->
+  <g transform="translate(27.16 14.2)">
+    <g transform="scale(0.92)">
+      <use href="#person-icon" />
+    </g>
+  </g>
+</svg>
