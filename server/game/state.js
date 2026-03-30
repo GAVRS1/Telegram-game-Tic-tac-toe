@@ -1,4 +1,9 @@
 import { send } from "../common/ws.js";
+import { awardCoins, COIN_REASONS } from "../services/coins.js";
+import { logCoinAward } from "../monitoring.js";
+
+const MATCH_WIN_COIN_REWARD = Number(process.env.COIN_REWARD_MATCH_WIN || 100);
+const ACHIEVEMENT_UNLOCK_COIN_REWARD = Number(process.env.COIN_REWARD_ACHIEVEMENT_UNLOCK || 50);
 
 const LINES = [
   [0, 1, 2],
@@ -69,12 +74,80 @@ export const createGameState = ({ recordMatchOutcome, toWs, games }) => {
     send(toWs(g.O), { t: "game.end", reason, by: winBy, ...buildMeta(g) });
 
     try {
+      let unlockedByUser = {};
       if (winBy === "X" || winBy === "O") {
         const winnerUid = winBy === "X" ? g.X : g.O;
         const loserUid = winBy === "X" ? g.O : g.X;
-        await recordMatchOutcome({ winnerId: winnerUid, loserId: loserUid });
+        unlockedByUser = await recordMatchOutcome({ winnerId: winnerUid, loserId: loserUid });
+        const eventKey = `match:${gameId}:winner:${winnerUid}`;
+        try {
+          const awardResult = await awardCoins({
+            userId: winnerUid,
+            reason: COIN_REASONS.MATCH_WIN,
+            amount: MATCH_WIN_COIN_REWARD,
+            meta: {
+              event_key: eventKey,
+              source: "match_win",
+              match_id: gameId,
+            },
+          });
+          logCoinAward({
+            source: "match_win",
+            eventKey,
+            userId: winnerUid,
+            reason: COIN_REASONS.MATCH_WIN,
+            amount: MATCH_WIN_COIN_REWARD,
+            result: awardResult.alreadyAwarded ? "already_awarded" : "awarded",
+          });
+        } catch (error) {
+          logCoinAward({
+            source: "match_win",
+            eventKey,
+            userId: winnerUid,
+            reason: COIN_REASONS.MATCH_WIN,
+            amount: MATCH_WIN_COIN_REWARD,
+            result: "error",
+            error,
+          });
+        }
       } else if (reason === "draw") {
-        await recordMatchOutcome({ drawIds: [g.X, g.O] });
+        unlockedByUser = await recordMatchOutcome({ drawIds: [g.X, g.O] });
+      }
+
+      for (const [userId, achievementIds] of Object.entries(unlockedByUser || {})) {
+        for (const achievementId of achievementIds || []) {
+          const achievementEventKey = `achievement:${userId}:${achievementId}`;
+          try {
+            const awardResult = await awardCoins({
+              userId,
+              reason: COIN_REASONS.ACHIEVEMENT_UNLOCK,
+              amount: ACHIEVEMENT_UNLOCK_COIN_REWARD,
+              meta: {
+                event_key: achievementEventKey,
+                source: "achievement_unlock",
+                achievement_id: achievementId,
+              },
+            });
+            logCoinAward({
+              source: "achievement_unlock",
+              eventKey: achievementEventKey,
+              userId,
+              reason: COIN_REASONS.ACHIEVEMENT_UNLOCK,
+              amount: ACHIEVEMENT_UNLOCK_COIN_REWARD,
+              result: awardResult.alreadyAwarded ? "already_awarded" : "awarded",
+            });
+          } catch (error) {
+            logCoinAward({
+              source: "achievement_unlock",
+              eventKey: achievementEventKey,
+              userId,
+              reason: COIN_REASONS.ACHIEVEMENT_UNLOCK,
+              amount: ACHIEVEMENT_UNLOCK_COIN_REWARD,
+              result: "error",
+              error,
+            });
+          }
+        }
       }
     } catch (error) {
       console.error("recordMatchOutcome error:", error);

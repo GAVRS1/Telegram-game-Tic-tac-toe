@@ -142,15 +142,24 @@ export async function ensureSchema() {
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     amount BIGINT NOT NULL,
     reason TEXT NOT NULL,
-    event_key TEXT,
+    event_key TEXT NOT NULL,
     meta JSONB NOT NULL DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );`);
   await p.query(
+    `
+      UPDATE coin_transactions
+      SET event_key = CONCAT('legacy:', id::text)
+      WHERE event_key IS NULL OR BTRIM(event_key) = '';
+    `,
+  );
+  await p.query(`ALTER TABLE coin_transactions ALTER COLUMN event_key SET NOT NULL;`);
+  await p.query(
     `CREATE INDEX IF NOT EXISTS idx_coin_transactions_user_created ON coin_transactions (user_id, created_at DESC);`,
   );
+  await p.query(`DROP INDEX IF EXISTS idx_coin_transactions_event_key_unique;`);
   await p.query(
-    `CREATE UNIQUE INDEX IF NOT EXISTS idx_coin_transactions_event_key_unique ON coin_transactions (event_key) WHERE event_key IS NOT NULL;`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_coin_transactions_event_key_unique ON coin_transactions (event_key);`,
   );
   await p.query(`
     CREATE TABLE IF NOT EXISTS achievements (
@@ -330,7 +339,7 @@ export async function recordPlayerResult(id, result) {
   else if (result === "loss") increments.losses = 1;
   else if (result === "draw") increments.draws = 1;
   await upsertStats(id, increments);
-  await refreshUserAchievements(id);
+  return refreshUserAchievements(id);
 }
 
 export async function recordMatchOutcome({
@@ -338,12 +347,14 @@ export async function recordMatchOutcome({
   loserId = null,
   drawIds = [],
 }) {
-  const tasks = [];
-  if (winnerId) tasks.push(recordPlayerResult(winnerId, "win"));
-  if (loserId) tasks.push(recordPlayerResult(loserId, "loss"));
+  const unlockedByUser = {};
+  if (winnerId) unlockedByUser[String(winnerId)] = await recordPlayerResult(winnerId, "win");
+  if (loserId) unlockedByUser[String(loserId)] = await recordPlayerResult(loserId, "loss");
   const uniqueDraws = Array.from(new Set(drawIds)).filter(isNumericId);
-  for (const id of uniqueDraws) tasks.push(recordPlayerResult(id, "draw"));
-  await Promise.all(tasks);
+  for (const id of uniqueDraws) {
+    unlockedByUser[String(id)] = await recordPlayerResult(id, "draw");
+  }
+  return unlockedByUser;
 }
 
 export async function getLeaders(limit = 20) {
@@ -494,7 +505,33 @@ export async function getUserProfile(id) {
     console.error("getUserProfile achievements error:", error);
   }
 
+  try {
+    profile.recent_coin_awards = await getUserCoinTransactions(n, 20);
+  } catch (error) {
+    console.error("getUserProfile recent_coin_awards error:", error);
+  }
+
   return profile;
+}
+
+export async function getUserCoinTransactions(id, limit = 20) {
+  const p = getPool();
+  if (!p) return [];
+  if (!isNumericId(id)) return [];
+
+  const n = Number(id);
+  const normalizedLimit = Math.min(100, Math.max(1, Number(limit) || 20));
+  const { rows } = await p.query(
+    `
+      SELECT id, user_id, amount, reason, event_key, meta, created_at
+      FROM coin_transactions
+      WHERE user_id = $1
+      ORDER BY created_at DESC, id DESC
+      LIMIT $2;
+    `,
+    [n, normalizedLimit],
+  );
+  return rows;
 }
 
 export async function createInvite({ code, hostUserId, expiresAt }) {
@@ -576,13 +613,12 @@ export async function acceptInvite({ code, guestUserId }) {
 
 export async function bindReferral({ inviterRefCode, invitedId }) {
   const p = getPool();
-  if (!p) return { linked: false, reason: "db_unavailable" };
-  if (!isNumericId(invitedId)) return { linked: false, reason: "invalid_id" };
-
-  const normalizedRefCode = normalizeReferralCode(inviterRefCode);
-  if (!normalizedRefCode) return { linked: false, reason: "invalid_ref_code" };
+  if (!p) return { linked: false, reason: "db_unavailable", inviterId: null, invitedId: null };
+  if (!isNumericId(invitedId)) return { linked: false, reason: "invalid_id", inviterId: null, invitedId: null };
 
   const invited = Number(invitedId);
+  const normalizedRefCode = normalizeReferralCode(inviterRefCode);
+  if (!normalizedRefCode) return { linked: false, reason: "invalid_ref_code", inviterId: null, invitedId: invited };
 
   const client = await p.connect();
   try {
@@ -600,11 +636,11 @@ export async function bindReferral({ inviterRefCode, invitedId }) {
     const inviter = Number(inviterLookup.rows[0]?.id);
     if (!Number.isFinite(inviter)) {
       await client.query("ROLLBACK");
-      return { linked: false, reason: "inviter_not_found" };
+      return { linked: false, reason: "inviter_not_found", inviterId: null, invitedId: invited };
     }
     if (inviter === invited) {
       await client.query("ROLLBACK");
-      return { linked: false, reason: "self_referral" };
+      return { linked: false, reason: "self_referral", inviterId: inviter, invitedId: invited };
     }
 
     const alreadyLinked = await client.query(
@@ -618,7 +654,7 @@ export async function bindReferral({ inviterRefCode, invitedId }) {
     );
     if (alreadyLinked.rowCount > 0) {
       await client.query("ROLLBACK");
-      return { linked: false, reason: "invited_already_has_referrer" };
+      return { linked: false, reason: "invited_already_has_referrer", inviterId: inviter, invitedId: invited };
     }
 
     const { rows } = await client.query(
@@ -634,7 +670,7 @@ export async function bindReferral({ inviterRefCode, invitedId }) {
     const linked = rows.length > 0;
     if (!linked) {
       await client.query("ROLLBACK");
-      return { linked: false, reason: "duplicate_pair" };
+      return { linked: false, reason: "duplicate_pair", inviterId: inviter, invitedId: invited };
     }
 
     await client.query(
@@ -648,7 +684,7 @@ export async function bindReferral({ inviterRefCode, invitedId }) {
     );
 
     await client.query("COMMIT");
-    return { linked: true, reason: "linked" };
+    return { linked: true, reason: "linked", inviterId: inviter, invitedId: invited };
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
@@ -712,8 +748,8 @@ async function ensureAchievementDefinitions(p) {
 
 async function refreshUserAchievements(id) {
   const p = getPool();
-  if (!p) return;
-  if (!isNumericId(id)) return;
+  if (!p) return [];
+  if (!isNumericId(id)) return [];
 
   const n = Number(id);
   const { rows } = await p.query(
@@ -726,10 +762,21 @@ async function refreshUserAchievements(id) {
     [n],
   );
   const stats = rows[0];
-  if (!stats) return;
+  if (!stats) return [];
+  const newlyUnlocked = [];
 
   for (const def of ACHIEVEMENTS) {
     const evaluation = evaluateAchievement(def, stats);
+    const previousStateResult = await p.query(
+      `
+        SELECT unlocked
+        FROM user_achievements
+        WHERE user_id = $1 AND achievement_id = $2
+        LIMIT 1;
+      `,
+      [n, def.id],
+    );
+    const wasUnlocked = previousStateResult.rows[0]?.unlocked === true;
     const unlockedAtExpression = evaluation.unlocked
       ? "CASE WHEN user_achievements.unlocked THEN user_achievements.unlocked_at ELSE NOW() END"
       : "CASE WHEN user_achievements.unlocked THEN user_achievements.unlocked_at ELSE NULL END";
@@ -754,7 +801,13 @@ async function refreshUserAchievements(id) {
         JSON.stringify({ ...(def.extra || {}), ...(evaluation.details || {}) }),
       ],
     );
+
+    if (evaluation.unlocked && !wasUnlocked) {
+      newlyUnlocked.push(def.id);
+    }
   }
+
+  return newlyUnlocked;
 }
 
 export async function getUserAchievements(id) {
