@@ -3,14 +3,13 @@ import { extractUserData, validateTelegramInitData } from "../../telegramAuth.js
 import { sanitizeString, validateHelloMessage } from "../../validation.js";
 import { buildTelegramName, sanitizeUsername } from "../../common/sanitize.js";
 
-function resolveReferralInviterId(startParam) {
+function resolveReferralCode(startParam) {
   if (typeof startParam !== "string") return null;
-  const trimmed = startParam.trim();
+  const trimmed = startParam.trim().toUpperCase();
   if (!trimmed) return null;
 
-  const prefixed = trimmed.match(/^ref[_:-]?([0-9]+)$/i);
+  const prefixed = trimmed.match(/^REF[_:-]?([A-Z0-9]+)$/);
   if (prefixed) return prefixed[1];
-  if (/^[0-9]+$/.test(trimmed)) return trimmed;
   return null;
 }
 
@@ -25,7 +24,7 @@ export const createHelloHandler = ({ wsByUid, userByWs, broadcastOnlineStats }) 
 
   let profile = { id: uid, name, username: usernameHint, avatar, isVerified: false, source: "fallback" };
 
-  let referralInviterId = resolveReferralInviterId(typeof msg.startParam === "string" ? msg.startParam : "");
+  let inviterRefCode = resolveReferralCode(typeof msg.startParam === "string" ? msg.startParam : "");
 
   if (initData) {
     const initDataValidation = validateTelegramInitData(initData);
@@ -49,9 +48,9 @@ export const createHelloHandler = ({ wsByUid, userByWs, broadcastOnlineStats }) 
         };
       }
 
-      if (!referralInviterId) {
+      if (!inviterRefCode) {
         const params = new URLSearchParams(initData);
-        referralInviterId = resolveReferralInviterId(params.get("start_param"));
+        inviterRefCode = resolveReferralCode(params.get("start_param"));
       }
     }
   }
@@ -81,9 +80,8 @@ export const createHelloHandler = ({ wsByUid, userByWs, broadcastOnlineStats }) 
     if (/^[0-9]+$/.test(uid)) {
       const usernameForDb = profile.username || profile.name;
       await upsertUser({ id: uid, username: usernameForDb, avatar_url: profile.avatar });
-      if (referralInviterId) {
-        await upsertUser({ id: referralInviterId, username: null, avatar_url: null });
-        await bindReferral({ inviterId: referralInviterId, invitedId: uid });
+      if (inviterRefCode) {
+        await bindReferral({ inviterRefCode, invitedId: uid });
       }
     }
   } catch {}
