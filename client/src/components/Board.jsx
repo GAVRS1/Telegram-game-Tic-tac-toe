@@ -35,6 +35,12 @@ export function Board({
   const youMark = game?.you || "—";
   const oppMark = game?.you ? (game.you === "X" ? "O" : "X") : "—";
   const totalOnline = Number(onlineStats?.total ?? 0);
+  const roundWinsX = Number(game?.roundWinsX ?? 0);
+  const roundWinsO = Number(game?.roundWinsO ?? 0);
+  const targetWins = Number(game?.matchTargetWins ?? 3);
+  const roundNumber = Number(game?.roundNumber ?? 1);
+  const mySeriesWins = game?.you === "X" ? roundWinsX : roundWinsO;
+  const oppSeriesWins = game?.you === "X" ? roundWinsO : roundWinsX;
 
   return (
     <div className={`wrap ${modesLayout ? "wrap--modes" : "wrap--game"}`}>
@@ -102,6 +108,9 @@ export function Board({
 
             <div className={`status-line ${statusText?.blink ? "blink" : ""}`} id="status">
               {statusText?.text || "Готово"}
+            </div>
+            <div className="status-line" id="seriesScore">
+              Раунд {roundNumber} · Серия {mySeriesWins}:{oppSeriesWins} (до {targetWins})
             </div>
 
             {boardContent ? (

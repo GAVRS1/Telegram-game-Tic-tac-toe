@@ -147,7 +147,7 @@ const broadcastOnlineStats = () => {
 };
 
 const gameState = createGameState({ recordMatchOutcome, toWs, games });
-const matchmaking = createMatchmaking({ toWs, userByWs, games, endGame: gameState.endGame });
+const matchmaking = createMatchmaking({ toWs, userByWs, games, endMatch: gameState.endMatch });
 
 const handlers = createWsHandlers({
   wsByUid,

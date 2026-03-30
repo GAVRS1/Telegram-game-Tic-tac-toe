@@ -60,6 +60,10 @@ const initialGameState = {
   board: Array(9).fill(null),
   opp: null,
   lastOpp: null,
+  roundWinsX: 0,
+  roundWinsO: 0,
+  roundNumber: 1,
+  matchTargetWins: 3,
 };
 
 const initialBotState = {
@@ -479,6 +483,10 @@ export default function App() {
       turn: "X",
       board: Array(9).fill(null),
       opp: null,
+      roundWinsX: 0,
+      roundWinsO: 0,
+      roundNumber: 1,
+      matchTargetWins: 3,
     }));
     setBotState(initialBotState);
     setWinLine(null);
@@ -606,6 +614,10 @@ export default function App() {
         username: "bot",
         avatar: "/img/logo.svg",
       },
+      roundWinsX: 0,
+      roundWinsO: 0,
+      roundNumber: 1,
+      matchTargetWins: 1,
     }));
   }, []);
 
@@ -1426,6 +1438,10 @@ export default function App() {
             opp: updatedOpp,
             lastOpp: updatedOpp ? { ...updatedOpp } : prev.lastOpp,
             board: Array(9).fill(null),
+            roundWinsX: Number(msg.roundWinsX ?? 0) || 0,
+            roundWinsO: Number(msg.roundWinsO ?? 0) || 0,
+            roundNumber: Number(msg.roundNumber ?? 1) || 1,
+            matchTargetWins: Number(msg.matchTargetWins ?? 3) || 3,
           };
         });
 
@@ -1539,79 +1555,111 @@ export default function App() {
       }
 
       if (msg.t === "game.state") {
-        if (Array.isArray(msg.board)) {
-          setGame((prev) => ({ ...prev, board: msg.board.slice() }));
+        setGame((prev) => ({
+          ...prev,
+          board: Array.isArray(msg.board) ? msg.board.slice() : prev.board,
+          turn: msg.turn || prev.turn,
+          roundWinsX: Number(msg.roundWinsX ?? prev.roundWinsX) || 0,
+          roundWinsO: Number(msg.roundWinsO ?? prev.roundWinsO) || 0,
+          roundNumber: Number(msg.roundNumber ?? prev.roundNumber) || 1,
+          matchTargetWins:
+            Number(msg.matchTargetWins ?? prev.matchTargetWins) || 3,
+        }));
+
+        setWinLine(null);
+        const allowed =
+          gameRef.current.you &&
+          gameRef.current.you === msg.turn &&
+          gameRef.current.gameId;
+        setStatus({
+          text: allowed ? "Ваш ход" : "Ход оппонента",
+          blink: false,
+        });
+        if (allowed) audioManager.playMove();
+        return;
+      }
+
+      if (msg.t === "game.round_end") {
+        const winnerMark = typeof msg.by === "string" ? msg.by : null;
+        const youWon = winnerMark && winnerMark === gameRef.current.you;
+        const youLost = winnerMark && winnerMark !== gameRef.current.you;
+
+        setGame((prev) => ({
+          ...prev,
+          roundWinsX: Number(msg.roundWinsX ?? prev.roundWinsX) || 0,
+          roundWinsO: Number(msg.roundWinsO ?? prev.roundWinsO) || 0,
+          roundNumber: Number(msg.roundNumber ?? prev.roundNumber) || 1,
+          matchTargetWins:
+            Number(msg.matchTargetWins ?? prev.matchTargetWins) || 3,
+        }));
+
+        if (Array.isArray(msg.line)) setWinLine(msg.line);
+
+        if (msg.reason === "draw") {
+          setStatus({ text: "Ничья в раунде. Новый раунд…", blink: false });
+          audioManager.playDraw();
+        } else if (youWon) {
+          setStatus({ text: "Раунд за вами!", blink: false });
+          audioManager.playWin();
+        } else if (youLost) {
+          setStatus({ text: "Раунд за соперником", blink: false });
+          audioManager.playLose();
         }
-        if (msg.turn) {
-          setGame((prev) => ({ ...prev, turn: msg.turn }));
-        }
+        return;
+      }
 
-        if (msg.win) {
-          if (msg.win.line) setWinLine(msg.win.line);
-          setNavMode("rematch");
+      if (msg.t === "game.match_end") {
+        const winnerMark = typeof msg.by === "string" ? msg.by : null;
+        const youWon = winnerMark && winnerMark === gameRef.current.you;
+        const youLost = winnerMark && winnerMark !== gameRef.current.you;
 
-          const youWon =
-            msg.win.by !== null && msg.win.by === gameRef.current.you;
-          const youLost =
-            msg.win.by !== null && msg.win.by !== gameRef.current.you;
-          const oppLabel = gameRef.current.opp?.name || "оппонент";
+        setNavMode("rematch");
 
-          let title = "Ничья 🤝";
-          let text = `Сыграли вничью с ${oppLabel}.`;
-          let phrasePool = DRAW_PHRASES;
+        let title = "Матч завершён";
+        let mainText = "Серия завершена.";
+        let phrases = DRAW_PHRASES;
+        let statusText = "Матч завершён";
 
-          if (youWon) {
-            title = "Победа 🎉";
-            text = `Вы обыграли ${oppLabel}.`;
-            phrasePool = WIN_PHRASES;
-            audioManager.playWin();
-            statsSystemRef.current?.endGame("win");
-          } else if (youLost) {
-            title = "Поражение 😔";
-            text = `${oppLabel} выиграл(а).`;
-            phrasePool = LOSE_PHRASES;
-            audioManager.playLose();
-            statsSystemRef.current?.endGame("lose");
-          } else {
-            audioManager.playDraw();
-            statsSystemRef.current?.endGame("draw");
-          }
-
-          const modalContent = buildResultContent(text, phrasePool);
-          setModal({
-            title,
-            content: modalContent,
-            primary: {
-              label: "Реванш",
-              onClick: () => {
-                hideModal();
-                inviteLastOpponent();
-              },
-            },
-            secondary: {
-              label: "Выйти",
-              onClick: () => {
-                toLobby();
-                setNavMode("find");
-              },
-            },
-          });
-
-          setStatus({
-            text: youWon ? "Победа!" : youLost ? "Поражение" : "Ничья",
-            blink: false,
-          });
+        if (youWon) {
+          title = "Победа в матче 🎉";
+          mainText = "Вы выиграли серию!";
+          phrases = WIN_PHRASES;
+          statusText = "Победа в матче!";
+          audioManager.playWin();
+          statsSystemRef.current?.endGame("win");
+        } else if (youLost) {
+          title = "Поражение в матче 😔";
+          mainText = "Соперник выиграл серию.";
+          phrases = LOSE_PHRASES;
+          statusText = "Поражение в матче";
+          audioManager.playLose();
+          statsSystemRef.current?.endGame("lose");
         } else {
-          const allowed =
-            gameRef.current.you &&
-            gameRef.current.you === msg.turn &&
-            gameRef.current.gameId;
-          setStatus({
-            text: allowed ? "Ваш ход" : "Ход оппонента",
-            blink: false,
-          });
-          if (allowed) audioManager.playMove();
+          statusText = "Матч завершён";
+          audioManager.playDraw();
+          statsSystemRef.current?.endGame("draw");
         }
+
+        setModal({
+          title,
+          content: buildResultContent(mainText, phrases),
+          primary: {
+            label: "Реванш",
+            onClick: () => {
+              hideModal();
+              inviteLastOpponent();
+            },
+          },
+          secondary: {
+            label: "Выйти",
+            onClick: () => {
+              toLobby();
+              setNavMode("find");
+            },
+          },
+        });
+
+        setStatus({ text: statusText, blink: false });
         return;
       }
 
@@ -1627,8 +1675,7 @@ export default function App() {
         const youWon = winnerMark && winnerMark === gameRef.current.you;
         const youLost = winnerMark && winnerMark !== gameRef.current.you;
 
-        if (msg.reason === "win" || msg.reason === "draw") {
-          setNavMode("rematch");
+        if (msg.reason === "win" || msg.reason === "draw" || msg.reason === "match_end") {
           return;
         }
 

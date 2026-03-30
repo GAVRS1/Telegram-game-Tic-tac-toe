@@ -19,8 +19,12 @@ export const createGameHandlers = ({ userByWs, games, gameState }) => ({
     g.turn = my === "X" ? "O" : "X";
 
     const res = checkWin(g.board);
+    if (res) {
+      gameState.endRound(gameId, res.by === null ? "draw" : "win", res.by, res.line || null);
+      return;
+    }
+
     gameState.broadcastState(gameId);
-    if (res) gameState.endGame(gameId, res.by === null ? "draw" : "win", res.by);
   },
 
   game_resign(ws, msg) {
@@ -34,6 +38,6 @@ export const createGameHandlers = ({ userByWs, games, gameState }) => ({
     let winBy = null;
     if (me === g.X) winBy = "O";
     else if (me === g.O) winBy = "X";
-    gameState.endGame(gameId, "resign", winBy);
+    gameState.endMatch(gameId, "resign", winBy);
   },
 });

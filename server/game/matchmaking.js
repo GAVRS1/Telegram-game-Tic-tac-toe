@@ -4,7 +4,7 @@ import { isNumericId } from "../common/id.js";
 import { sanitizeUsername } from "../common/sanitize.js";
 import { send } from "../common/ws.js";
 
-export const createMatchmaking = ({ toWs, userByWs, games, endGame }) => {
+export const createMatchmaking = ({ toWs, userByWs, games, endMatch }) => {
   const queueByUid = new Map();
   const queueOrder = [];
   let queueHead = 0;
@@ -167,7 +167,16 @@ export const createMatchmaking = ({ toWs, userByWs, games, endGame }) => {
     const firstIsX = Math.random() < 0.5;
     const X = firstIsX ? uidA : uidB;
     const O = firstIsX ? uidB : uidA;
-    games.set(gameId, { X, O, board: Array(9).fill(null), turn: "X" });
+    games.set(gameId, {
+      X,
+      O,
+      board: Array(9).fill(null),
+      turn: "X",
+      roundWinsX: 0,
+      roundWinsO: 0,
+      roundNumber: 1,
+      matchTargetWins: 3,
+    });
 
     const a = userByWs.get(toWs(uidA));
     const b = userByWs.get(toWs(uidB));
@@ -176,8 +185,9 @@ export const createMatchmaking = ({ toWs, userByWs, games, endGame }) => {
 
     const [oppForX, oppForO] = await Promise.all([buildOpponentPayload(O), buildOpponentPayload(X)]);
 
-    send(toWs(X), { t: "game.start", gameId, you: "X", turn: "X", opp: oppForX });
-    send(toWs(O), { t: "game.start", gameId, you: "O", turn: "X", opp: oppForO });
+    const initialMeta = { roundWinsX: 0, roundWinsO: 0, roundNumber: 1, matchTargetWins: 3 };
+    send(toWs(X), { t: "game.start", gameId, you: "X", turn: "X", opp: oppForX, ...initialMeta });
+    send(toWs(O), { t: "game.start", gameId, you: "O", turn: "X", opp: oppForO, ...initialMeta });
 
     console.log(`[GAME] ${gameId}: ${a?.name || X} vs ${b?.name || O}`);
   };
@@ -259,7 +269,7 @@ export const createMatchmaking = ({ toWs, userByWs, games, endGame }) => {
         let winBy = null;
         if (g.X === uid && g.O) winBy = "O";
         else if (g.O === uid && g.X) winBy = "X";
-        endGame(gid, "disconnect", winBy);
+        endMatch(gid, "disconnect", winBy);
       }
     }
   };
