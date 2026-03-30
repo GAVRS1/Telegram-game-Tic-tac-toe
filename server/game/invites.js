@@ -3,6 +3,7 @@ import {
   createInvite,
   getPendingInviteByHost,
 } from "../db.js";
+import { buildLobbyInvitePayload } from "../common/startPayload.js";
 
 const INVITE_TTL_MS = 1000 * 60 * 30;
 const INVITE_CODE_LENGTH = 10;
@@ -15,8 +16,8 @@ export const createInviteService = ({ port, publicUrl }) => {
     crypto.randomBytes(8).toString("base64url").slice(0, INVITE_CODE_LENGTH);
 
   const buildInviteLink = (req, code) => {
-    const inviteCode = encodeURIComponent(code);
-    return `https://t.me/TTToeONL_bot/game?startapp=${inviteCode}`;
+    const payload = encodeURIComponent(buildLobbyInvitePayload(code));
+    return `https://t.me/TTToeONL_bot/game?startapp=${payload}`;
   };
 
   const cacheInvite = (invite) => {

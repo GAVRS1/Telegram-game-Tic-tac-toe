@@ -2,16 +2,7 @@ import { bindReferral, ensureSchema, upsertUser } from "../../db.js";
 import { extractUserData, validateTelegramInitData } from "../../telegramAuth.js";
 import { sanitizeString, validateHelloMessage } from "../../validation.js";
 import { buildTelegramName, sanitizeUsername } from "../../common/sanitize.js";
-
-function resolveReferralCode(startParam) {
-  if (typeof startParam !== "string") return null;
-  const trimmed = startParam.trim().toUpperCase();
-  if (!trimmed) return null;
-
-  const prefixed = trimmed.match(/^REF[_:-]?([A-Z0-9]+)$/);
-  if (prefixed) return prefixed[1];
-  return null;
-}
+import { parseStartPayload } from "../../common/startPayload.js";
 
 export const createHelloHandler = ({ wsByUid, userByWs, broadcastOnlineStats }) => async (ws, msg) => {
   if (!validateHelloMessage(msg)) return;
@@ -24,7 +15,12 @@ export const createHelloHandler = ({ wsByUid, userByWs, broadcastOnlineStats }) 
 
   let profile = { id: uid, name, username: usernameHint, avatar, isVerified: false, source: "fallback" };
 
-  let inviterRefCode = resolveReferralCode(typeof msg.startParam === "string" ? msg.startParam : "");
+  const startPayloadCandidates = [];
+  if (typeof msg.startParam === "string") {
+    startPayloadCandidates.push(msg.startParam);
+  }
+  let parsedStartPayload = { kind: "none", raw: "" };
+  let inviterRefCode = null;
 
   if (initData) {
     const initDataValidation = validateTelegramInitData(initData);
@@ -48,11 +44,39 @@ export const createHelloHandler = ({ wsByUid, userByWs, broadcastOnlineStats }) 
         };
       }
 
-      if (!inviterRefCode) {
+      if (parsedStartPayload.kind === "none") {
         const params = new URLSearchParams(initData);
-        inviterRefCode = resolveReferralCode(params.get("start_param"));
+        startPayloadCandidates.push(params.get("start_param") || "");
       }
     }
+  }
+
+  for (const candidate of startPayloadCandidates) {
+    const parsed = parseStartPayload(candidate);
+    if (parsed.kind === "none") continue;
+    parsedStartPayload = parsed;
+    if (parsed.kind === "referral" && !inviterRefCode) {
+      inviterRefCode = parsed.refCode;
+    }
+    if (parsed.kind === "referral" || parsed.kind === "lobby_invite") {
+      break;
+    }
+  }
+
+  if (parsedStartPayload.kind === "invalid") {
+    console.warn(`[HELLO] uid=${uid} rejected start payload: ${parsedStartPayload.reason}`);
+  }
+
+  const registrationSource = profile.isVerified ? "telegram_init_data" : null;
+  const registrationPayload = profile.isVerified && parsedStartPayload.kind !== "none" ? parsedStartPayload.raw : null;
+
+  if (!profile.isVerified && parsedStartPayload.kind === "referral") {
+    // Referrals are only attributed for verified Telegram sessions.
+    inviterRefCode = null;
+  }
+
+  if (parsedStartPayload.kind === "unknown") {
+    console.log(`[HELLO] uid=${uid} unknown start payload="${parsedStartPayload.raw}"`);
   }
 
   const prev = wsByUid.get(uid);
@@ -79,9 +103,22 @@ export const createHelloHandler = ({ wsByUid, userByWs, broadcastOnlineStats }) 
     await ensureSchema();
     if (/^[0-9]+$/.test(uid)) {
       const usernameForDb = profile.username || profile.name;
-      await upsertUser({ id: uid, username: usernameForDb, avatar_url: profile.avatar });
+      await upsertUser({
+        id: uid,
+        username: usernameForDb,
+        avatar_url: profile.avatar,
+        registrationSource,
+        registrationPayload,
+      });
       if (inviterRefCode) {
-        await bindReferral({ inviterRefCode, invitedId: uid });
+        const referralResult = await bindReferral({ inviterRefCode, invitedId: uid });
+        if (referralResult.linked) {
+          console.log(`[REFERRAL] uid=${uid} linked via ref=${inviterRefCode}`);
+        } else {
+          console.log(
+            `[REFERRAL] uid=${uid} skipped ref=${inviterRefCode} reason=${referralResult.reason || "unknown"}`
+          );
+        }
       }
     }
   } catch {}
