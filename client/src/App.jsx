@@ -11,6 +11,7 @@ import { audioManager } from "./services/audioManager.js";
 import { StatsSystem } from "./services/statsSystem.js";
 import { isNumericId, normalizeId, sanitizeUsername } from "./utils/identity.js";
 import { apiUrl, resolveWsUrl } from "./utils/network.js";
+import { parseStartPayload } from "./utils/startPayload.js";
 
 const WIN_PHRASES = [
   "Поздравляем! Вы сыграли мощно 👑",
@@ -211,7 +212,7 @@ function resolveStartParamFromLocation() {
   try {
     const params = new URLSearchParams(window.location.search);
     const directRef = params.get("ref")?.trim();
-    if (directRef) return directRef;
+    if (directRef) return `ref_${directRef}`;
 
     const telegramStart = params.get("tgWebAppStartParam")?.trim();
     if (telegramStart) return telegramStart;
@@ -222,17 +223,11 @@ function resolveStartParamFromLocation() {
   return typeof startParam === "string" ? startParam.trim() : "";
 }
 
-function isReferralStartParam(value) {
-  if (typeof value !== "string") return false;
-  const normalized = value.trim();
-  if (!normalized) return false;
-  return /^ref[_:-]?[a-z0-9]+$/i.test(normalized);
-}
-
 function resolveInviteCodeFromLocation() {
-  const startParam = resolveStartParamFromLocation();
-  if (!startParam || isReferralStartParam(startParam)) return "";
-  return startParam;
+  const parsed = parseStartPayload(resolveStartParamFromLocation());
+  if (parsed.kind === "lobby_invite") return parsed.inviteCode;
+  if (parsed.kind === "unknown") return parsed.raw;
+  return "";
 }
 
 export default function App() {

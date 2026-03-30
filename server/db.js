@@ -56,6 +56,9 @@ export async function ensureSchema() {
   await p.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS draws INTEGER NOT NULL DEFAULT 0;`);
   await p.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS invites_count INTEGER NOT NULL DEFAULT 0;`);
   await p.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS ref_code TEXT;`);
+  await p.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS registration_source TEXT;`);
+  await p.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS registration_payload TEXT;`);
+  await p.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS registration_at TIMESTAMPTZ;`);
   await p.query(`
     UPDATE users
        SET ref_code = 'U' || UPPER(LPAD(TO_HEX(id::bigint), 12, '0'))
@@ -146,7 +149,7 @@ function isNumericId(id) {
     : typeof id === 'string' && /^[0-9]+$/.test(id);
 }
 
-export async function upsertUser({ id, username, avatar_url }) {
+export async function upsertUser({ id, username, avatar_url, registrationSource = null, registrationPayload = null }) {
   const p = getPool();
   if (!p) return;
   if (!isNumericId(id)) return;
@@ -157,14 +160,17 @@ export async function upsertUser({ id, username, avatar_url }) {
     try {
       await p.query(
         `
-        INSERT INTO users (id, username, avatar_url, ref_code)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO users (id, username, avatar_url, ref_code, registration_source, registration_payload, registration_at)
+        VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $5 IS NULL THEN NULL ELSE NOW() END)
         ON CONFLICT (id) DO UPDATE
           SET username = EXCLUDED.username,
               avatar_url = EXCLUDED.avatar_url,
+              registration_source = COALESCE(users.registration_source, $5),
+              registration_payload = COALESCE(users.registration_payload, $6),
+              registration_at = COALESCE(users.registration_at, CASE WHEN $5 IS NULL THEN NULL ELSE NOW() END),
               updated_at = NOW();
       `,
-        [n, username || null, avatar_url || null, refCode]
+        [n, username || null, avatar_url || null, refCode, registrationSource, registrationPayload]
       );
       return;
     } catch (error) {

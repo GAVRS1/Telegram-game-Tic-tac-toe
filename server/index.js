@@ -231,7 +231,7 @@ wss.on("connection", (ws) => {
   });
 });
 
-launchTelegramBot({ token: BOT_TOKEN, skip: SKIP_BOT });
+launchTelegramBot({ token: BOT_TOKEN, skip: SKIP_BOT, publicUrl: PUBLIC_URL });
 
 (async () => {
   try {
