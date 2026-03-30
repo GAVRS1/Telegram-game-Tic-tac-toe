@@ -9,7 +9,11 @@ import { useWebSocket } from "./hooks/useWebSocket.js";
 import { useNotifications } from "./hooks/useNotifications.js";
 import { audioManager } from "./services/audioManager.js";
 import { StatsSystem } from "./services/statsSystem.js";
-import { isNumericId, normalizeId, sanitizeUsername } from "./utils/identity.js";
+import {
+  isNumericId,
+  normalizeId,
+  sanitizeUsername,
+} from "./utils/identity.js";
 import { apiUrl, resolveWsUrl } from "./utils/network.js";
 import { parseStartPayload } from "./utils/startPayload.js";
 
@@ -77,9 +81,19 @@ function vibrate(ms = 15) {
 }
 
 function buildResultContent(baseText, phrasesPool) {
-  const blocks = [<p key="main" className="modal-text">{String(baseText ?? "")}</p>];
-  const extra = Array.isArray(phrasesPool) && phrasesPool.length ? pick(phrasesPool) : null;
-  if (extra) blocks.push(<p key="extra" className="modal-phrase">{extra}</p>);
+  const blocks = [
+    <p key="main" className="modal-text">
+      {String(baseText ?? "")}
+    </p>,
+  ];
+  const extra =
+    Array.isArray(phrasesPool) && phrasesPool.length ? pick(phrasesPool) : null;
+  if (extra)
+    blocks.push(
+      <p key="extra" className="modal-phrase">
+        {extra}
+      </p>,
+    );
   return blocks;
 }
 
@@ -106,7 +120,9 @@ function getFinishingMove(board, mark) {
 }
 
 function pickRandomMove(board) {
-  const free = board.map((value, index) => (!value ? index : null)).filter((value) => value !== null);
+  const free = board
+    .map((value, index) => (!value ? index : null))
+    .filter((value) => value !== null);
   if (!free.length) return null;
   return free[Math.floor(Math.random() * free.length)];
 }
@@ -138,13 +154,18 @@ function pickAdaptiveMove(board, playerMoves, botMark, playerMark) {
     if (!board[side]) return side;
   }
 
-  return getFinishingMove(board, botMark) ?? getFinishingMove(board, playerMark) ?? pickRandomMove(board);
+  return (
+    getFinishingMove(board, botMark) ??
+    getFinishingMove(board, playerMark) ??
+    pickRandomMove(board)
+  );
 }
 
 function needsOpponentDetails(opp) {
   if (!opp) return false;
   const hasAvatar = typeof opp.avatar === "string" && opp.avatar.trim() !== "";
-  const hasUsername = typeof opp.username === "string" && opp.username.trim() !== "";
+  const hasUsername =
+    typeof opp.username === "string" && opp.username.trim() !== "";
   return !hasAvatar || !hasUsername;
 }
 
@@ -174,7 +195,10 @@ function formatAchievementProgressText(achievement) {
 
 function buildAchievementHint(achievement) {
   if (achievement?.metric === "win_rate") {
-    const minGames = Number(achievement?.details?.minGames ?? achievement?.extra?.min_games ?? 0) || 0;
+    const minGames =
+      Number(
+        achievement?.details?.minGames ?? achievement?.extra?.min_games ?? 0,
+      ) || 0;
     const gamesPlayed = Number(achievement?.details?.gamesPlayed ?? 0) || 0;
     if (minGames > 0 && gamesPlayed < minGames) {
       const remaining = Math.max(0, minGames - gamesPlayed);
@@ -198,12 +222,25 @@ function formatDate(value) {
 
 const RATING_METRICS = [
   { key: "wins", label: "Победы", valueLabel: "Победы", icon: "🏆" },
-  { key: "achievements", label: "Достижения", valueLabel: "Открыто достижений", icon: "🎖️" },
-  { key: "invites", label: "Приглашения", valueLabel: "Приглашено друзей", icon: "🤝" },
+  { key: "coins", label: "Монеты", valueLabel: "Монет", icon: "🪙" },
+  {
+    key: "achievements",
+    label: "Достижения",
+    valueLabel: "Открыто достижений",
+    icon: "🎖️",
+  },
+  {
+    key: "invites",
+    label: "Приглашения",
+    valueLabel: "Приглашено друзей",
+    icon: "🤝",
+  },
 ];
 
 function getRatingMetricConfig(metric) {
-  return RATING_METRICS.find((item) => item.key === metric) || RATING_METRICS[0];
+  return (
+    RATING_METRICS.find((item) => item.key === metric) || RATING_METRICS[0]
+  );
 }
 
 function resolveStartParamFromLocation() {
@@ -236,11 +273,16 @@ export default function App() {
   const [status, setStatus] = useState({ text: "Готово", blink: false });
   const [screen, setScreen] = useState("modes");
   const [activeModeIndex, setActiveModeIndex] = useState(0);
-  const [friendInviteInputVisible, setFriendInviteInputVisible] = useState(false);
+  const [friendInviteInputVisible, setFriendInviteInputVisible] =
+    useState(false);
   const [friendInviteInput, setFriendInviteInput] = useState("");
   const [lobbyInviteCode, setLobbyInviteCode] = useState("");
   const [navMode, setNavMode] = useState("find");
-  const [onlineStats, setOnlineStats] = useState({ total: 0, verified: 0, guest: 0 });
+  const [onlineStats, setOnlineStats] = useState({
+    total: 0,
+    verified: 0,
+    guest: 0,
+  });
   const [modalState, setModalState] = useState({
     open: false,
     title: "",
@@ -300,11 +342,12 @@ export default function App() {
     const syncViewportSize = () => {
       const stableHeight = Number(tg?.viewportStableHeight);
       const dynamicHeight = Number(tg?.viewportHeight);
-      const nextHeight = Number.isFinite(stableHeight) && stableHeight > 0
-        ? stableHeight
-        : Number.isFinite(dynamicHeight) && dynamicHeight > 0
-          ? dynamicHeight
-          : window.innerHeight;
+      const nextHeight =
+        Number.isFinite(stableHeight) && stableHeight > 0
+          ? stableHeight
+          : Number.isFinite(dynamicHeight) && dynamicHeight > 0
+            ? dynamicHeight
+            : window.innerHeight;
 
       root.style.setProperty("--tg-viewport-height", `${nextHeight}px`);
       root.style.setProperty("--tg-viewport-width", `${window.innerWidth}px`);
@@ -340,7 +383,9 @@ export default function App() {
       try {
         if (telegram?.openTelegramLink) {
           telegram.openTelegramLink(shareUrl);
-          notifications.success("Окно Telegram для отправки приглашения открыто");
+          notifications.success(
+            "Окно Telegram для отправки приглашения открыто",
+          );
           return;
         }
       } catch {}
@@ -349,10 +394,12 @@ export default function App() {
         await navigator.clipboard?.writeText(link);
         notifications.success("Ссылка скопирована в буфер обмена");
       } catch {
-        notifications.info("Ссылка приглашения готова: отправьте её другу в Telegram");
+        notifications.info(
+          "Ссылка приглашения готова: отправьте её другу в Telegram",
+        );
       }
     },
-    [notifications, telegram]
+    [notifications, telegram],
   );
 
   const createInvite = useCallback(() => {
@@ -380,7 +427,7 @@ export default function App() {
       if (notify) notifications.info("Поиск соперника…");
       if (playSound) audioManager.playClick();
     },
-    [notifications, sendWs]
+    [notifications, sendWs],
   );
 
   const cancelQueueSearch = useCallback(
@@ -392,7 +439,7 @@ export default function App() {
       if (notify) notifications.info("Поиск остановлен");
       if (playSound) audioManager.playClick();
     },
-    [notifications, sendWs]
+    [notifications, sendWs],
   );
 
   const inviteLastOpponent = useCallback(() => {
@@ -403,7 +450,11 @@ export default function App() {
     }
     setStatus({ text: "Отправлено приглашение на реванш…", blink: true });
     notifications.info("Приглашение отправлено");
-    sendWs({ t: "rematch.offer", to: lastOpp.id, prevGameId: gameRef.current.gameId || null });
+    sendWs({
+      t: "rematch.offer",
+      to: lastOpp.id,
+      prevGameId: gameRef.current.gameId || null,
+    });
     audioManager.playClick();
   }, [notifications, sendWs, startQueueSearch]);
 
@@ -413,7 +464,7 @@ export default function App() {
       sendWs({ t: "rematch.accept", to: fromId });
       audioManager.playClick();
     },
-    [sendWs]
+    [sendWs],
   );
 
   const toLobby = useCallback(() => {
@@ -460,60 +511,64 @@ export default function App() {
     audioManager.playClick();
   }, [friendInviteInput, notifications, sendWs]);
 
-  const finishComputerGame = useCallback((result, board, line = null) => {
-    setWinLine(line);
-    setNavMode("find");
+  const finishComputerGame = useCallback(
+    (result, board, line = null) => {
+      setWinLine(line);
+      setNavMode("find");
 
-    let title = "Ничья 🤝";
-    let text = "Матч с компьютером завершился ничьей.";
-    let phrasePool = DRAW_PHRASES;
-    let statusText = "Ничья";
+      let title = "Ничья 🤝";
+      let text = "Матч с компьютером завершился ничьей.";
+      let phrasePool = DRAW_PHRASES;
+      let statusText = "Ничья";
 
-    if (result === "win") {
-      title = "Победа 🎉";
-      text = "Вы обыграли компьютер.";
-      phrasePool = WIN_PHRASES;
-      statusText = "Победа!";
-      audioManager.playWin();
-    } else if (result === "lose") {
-      title = "Поражение 😔";
-      text = "Компьютер оказался сильнее.";
-      phrasePool = LOSE_PHRASES;
-      statusText = "Поражение";
-      audioManager.playLose();
-    } else {
-      audioManager.playDraw();
-    }
+      if (result === "win") {
+        title = "Победа 🎉";
+        text = "Вы обыграли компьютер.";
+        phrasePool = WIN_PHRASES;
+        statusText = "Победа!";
+        audioManager.playWin();
+      } else if (result === "lose") {
+        title = "Поражение 😔";
+        text = "Компьютер оказался сильнее.";
+        phrasePool = LOSE_PHRASES;
+        statusText = "Поражение";
+        audioManager.playLose();
+      } else {
+        audioManager.playDraw();
+      }
 
-    setStatus({ text: statusText, blink: false });
-    setModal({
-      title,
-      content: buildResultContent(text, phrasePool),
-      primary: {
-        label: "Сыграть снова",
-        onClick: () => {
-          hideModal();
-          setScreen("modes");
+      setStatus({ text: statusText, blink: false });
+      setModal({
+        title,
+        content: buildResultContent(text, phrasePool),
+        primary: {
+          label: "Сыграть снова",
+          onClick: () => {
+            hideModal();
+            setScreen("modes");
+          },
         },
-      },
-      secondary: {
-        label: "Выйти",
-        onClick: () => {
-          hideModal();
-          toLobby();
-          setBotState(initialBotState);
+        secondary: {
+          label: "Выйти",
+          onClick: () => {
+            hideModal();
+            toLobby();
+            setBotState(initialBotState);
+          },
         },
-      },
-    });
+      });
 
-    if (board) {
-      setGame((prev) => ({ ...prev, board: board.slice(), turn: null }));
-    }
-  }, [hideModal, setModal, toLobby]);
+      if (board) {
+        setGame((prev) => ({ ...prev, board: board.slice(), turn: null }));
+      }
+    },
+    [hideModal, setModal, toLobby],
+  );
 
   const startComputerGame = useCallback(() => {
     const strategies = Object.keys(BOT_STRATEGIES);
-    const strategy = strategies[Math.floor(Math.random() * strategies.length)] || "random";
+    const strategy =
+      strategies[Math.floor(Math.random() * strategies.length)] || "random";
     const playerMark = "X";
     const botMark = "O";
 
@@ -561,7 +616,7 @@ export default function App() {
       toLobby();
       audioManager.playClick();
     },
-    [sendWs, toLobby]
+    [sendWs, toLobby],
   );
 
   const onNavAction = useCallback(
@@ -617,7 +672,18 @@ export default function App() {
         inviteLastOpponent();
       }
     },
-    [botState.active, cancelQueueSearch, finishComputerGame, hideModal, inviteLastOpponent, sendWs, setModal, startComputerGame, startQueueSearch, toLobby]
+    [
+      botState.active,
+      cancelQueueSearch,
+      finishComputerGame,
+      hideModal,
+      inviteLastOpponent,
+      sendWs,
+      setModal,
+      startComputerGame,
+      startQueueSearch,
+      toLobby,
+    ],
   );
 
   const handleCellClick = useCallback(
@@ -626,7 +692,9 @@ export default function App() {
       if (!currentGame.gameId) return;
 
       if (botState.active) {
-        const board = Array.isArray(currentGame.board) ? currentGame.board.slice() : Array(9).fill(null);
+        const board = Array.isArray(currentGame.board)
+          ? currentGame.board.slice()
+          : Array(9).fill(null);
         if (currentGame.turn !== botState.playerMark || board[index]) return;
 
         vibrate(10);
@@ -634,7 +702,11 @@ export default function App() {
         board[index] = botState.playerMark;
         const nextPlayerMoves = [...botState.playerMoves, index];
         setBotState((prev) => ({ ...prev, playerMoves: nextPlayerMoves }));
-        setGame((prev) => ({ ...prev, board: board.slice(), turn: botState.botMark }));
+        setGame((prev) => ({
+          ...prev,
+          board: board.slice(),
+          turn: botState.botMark,
+        }));
 
         const playerResult = getWinner(board);
         if (playerResult) {
@@ -651,17 +723,25 @@ export default function App() {
         if (botTimeoutRef.current) clearTimeout(botTimeoutRef.current);
         botTimeoutRef.current = setTimeout(() => {
           const currentBoard = gameRef.current.board.slice();
-          if (!botState.active || gameRef.current.turn !== botState.botMark) return;
+          if (!botState.active || gameRef.current.turn !== botState.botMark)
+            return;
 
           let botMove = null;
           if (botState.strategy === "defensive") {
-            botMove = getFinishingMove(currentBoard, botState.botMark)
-              ?? getFinishingMove(currentBoard, botState.playerMark)
-              ?? pickRandomMove(currentBoard);
+            botMove =
+              getFinishingMove(currentBoard, botState.botMark) ??
+              getFinishingMove(currentBoard, botState.playerMark) ??
+              pickRandomMove(currentBoard);
           } else if (botState.strategy === "adaptive") {
-            botMove = getFinishingMove(currentBoard, botState.botMark)
-              ?? getFinishingMove(currentBoard, botState.playerMark)
-              ?? pickAdaptiveMove(currentBoard, nextPlayerMoves, botState.botMark, botState.playerMark);
+            botMove =
+              getFinishingMove(currentBoard, botState.botMark) ??
+              getFinishingMove(currentBoard, botState.playerMark) ??
+              pickAdaptiveMove(
+                currentBoard,
+                nextPlayerMoves,
+                botState.botMark,
+                botState.playerMark,
+              );
           } else {
             botMove = pickRandomMove(currentBoard);
           }
@@ -672,11 +752,16 @@ export default function App() {
           }
 
           currentBoard[botMove] = botState.botMark;
-          setGame((prev) => ({ ...prev, board: currentBoard.slice(), turn: botState.playerMark }));
+          setGame((prev) => ({
+            ...prev,
+            board: currentBoard.slice(),
+            turn: botState.playerMark,
+          }));
 
           const botResult = getWinner(currentBoard);
           if (botResult) {
-            if (botResult.mark === botState.botMark) finishComputerGame("lose", currentBoard, botResult.line);
+            if (botResult.mark === botState.botMark)
+              finishComputerGame("lose", currentBoard, botResult.line);
             else finishComputerGame("draw", currentBoard, null);
             return;
           }
@@ -687,7 +772,10 @@ export default function App() {
         return;
       }
 
-      const myMoveAllowed = currentGame.you && currentGame.you === currentGame.turn && currentGame.gameId;
+      const myMoveAllowed =
+        currentGame.you &&
+        currentGame.you === currentGame.turn &&
+        currentGame.gameId;
       if (!myMoveAllowed || currentGame.board[index]) return;
 
       vibrate(10);
@@ -695,7 +783,7 @@ export default function App() {
       statsSystemRef.current?.recordMove(index);
       sendWs({ t: "game.move", gameId: currentGame.gameId, i: index });
     },
-    [botState, finishComputerGame, sendWs]
+    [botState, finishComputerGame, sendWs],
   );
 
   const handleAuthorClick = useCallback(() => {
@@ -708,133 +796,180 @@ export default function App() {
     }
   }, [telegram]);
 
-  const loadRating = useCallback(async (metric = "wins") => {
-    const metricConfig = getRatingMetricConfig(metric);
+  const loadRating = useCallback(
+    async (metric = "wins") => {
+      const metricConfig = getRatingMetricConfig(metric);
 
-    setModal({
-      title: "Топ игроков",
-      content: "Загрузка…",
-      primary: {
-        label: "Закрыть",
-        onClick: () => hideModal(),
-      },
-      secondary: { show: false },
-    });
+      setModal({
+        title: "Топ игроков",
+        content: "Загрузка…",
+        primary: {
+          label: "Закрыть",
+          onClick: () => hideModal(),
+        },
+        secondary: { show: false },
+      });
 
-    try {
-      const response = await fetch(apiUrl(`/leaders?metric=${encodeURIComponent(metricConfig.key)}`), { cache: "no-store" });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
-      const rows = Array.isArray(data?.leaders) ? data.leaders : [];
-      const selectedMetric = getRatingMetricConfig(data?.metric || metricConfig.key);
+      try {
+        const response = await fetch(
+          apiUrl(`/leaders?metric=${encodeURIComponent(metricConfig.key)}`),
+          { cache: "no-store" },
+        );
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        const rows = Array.isArray(data?.leaders) ? data.leaders : [];
+        const selectedMetric = getRatingMetricConfig(
+          data?.metric || metricConfig.key,
+        );
 
-      const metricValue = (user) => {
-        if (selectedMetric.key === "achievements") return Number(user.achievements_unlocked ?? 0);
-        if (selectedMetric.key === "invites") return Number(user.invites_count ?? 0);
-        return Number(user.wins ?? 0);
-      };
+        const metricValue = (user) => {
+          if (selectedMetric.key === "achievements")
+            return Number(user.achievements_unlocked ?? 0);
+          if (selectedMetric.key === "invites")
+            return Number(user.invites_count ?? 0);
+          if (selectedMetric.key === "coins")
+            return Number(user.coins_balance ?? 0);
+          return Number(user.wins ?? 0);
+        };
 
-      const content = (
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "50vh", overflow: "auto" }}>
+        const content = (
           <div
             style={{
               display: "flex",
+              flexDirection: "column",
               gap: "8px",
-              alignItems: "center",
-              flexWrap: "wrap",
-              marginBottom: "4px",
+              maxHeight: "50vh",
+              overflow: "auto",
             }}
           >
-            {RATING_METRICS.map((item) => {
-              const active = selectedMetric.key === item.key;
-              return (
-                <button
-                  key={item.key}
-                  type="button"
-                  className={`btn ${active ? "primary" : ""}`}
-                  style={{ padding: "6px 10px", minHeight: "32px" }}
-                  onClick={() => loadRating(item.key)}
-                >
-                  {item.label}
-                </button>
-              );
-            })}
-          </div>
-          <div style={{ fontSize: "12px", color: "var(--muted)", marginBottom: "4px" }}>
-            Тип рейтинга: <b style={{ color: "var(--text)" }}>{selectedMetric.label}</b> • Метрика: {selectedMetric.valueLabel}
-          </div>
-          {rows.length === 0 ? (
-            <div>Список пуст.</div>
-          ) : (
-            rows.map((user, index) => (
-              <div
-                key={`${user.username || "player"}-${index}`}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  border: "1px solid var(--line)",
-                  borderRadius: "10px",
-                  padding: "8px",
-                }}
-              >
-                <div style={{ width: "24px", textAlign: "right", fontWeight: 700 }}>{index + 1}</div>
-                <img
-                  src={user.avatar_url || "/img/logo.svg"}
-                  alt=""
-                  style={{
-                    width: "28px",
-                    height: "28px",
-                    borderRadius: "50%",
-                    objectFit: "cover",
-                    border: "1px solid var(--line)",
-                  }}
-                />
-                <div style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {user.username || "Player"}
-                </div>
+            <div
+              style={{
+                display: "flex",
+                gap: "8px",
+                alignItems: "center",
+                flexWrap: "wrap",
+                marginBottom: "4px",
+              }}
+            >
+              {RATING_METRICS.map((item) => {
+                const active = selectedMetric.key === item.key;
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    className={`btn ${active ? "primary" : ""}`}
+                    style={{ padding: "6px 10px", minHeight: "32px" }}
+                    onClick={() => loadRating(item.key)}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div
+              style={{
+                fontSize: "12px",
+                color: "var(--muted)",
+                marginBottom: "4px",
+              }}
+            >
+              Тип рейтинга:{" "}
+              <b style={{ color: "var(--text)" }}>{selectedMetric.label}</b> •
+              Метрика: {selectedMetric.valueLabel}
+            </div>
+            {rows.length === 0 ? (
+              <div>Список пуст.</div>
+            ) : (
+              rows.map((user, index) => (
                 <div
+                  key={`${user.username || "player"}-${index}`}
                   style={{
                     display: "flex",
-                    flexDirection: "column",
-                    alignItems: "flex-end",
-                    gap: "4px",
-                    fontSize: "12px",
-                    color: "var(--muted)",
+                    alignItems: "center",
+                    gap: "10px",
+                    border: "1px solid var(--line)",
+                    borderRadius: "10px",
+                    padding: "8px",
                   }}
                 >
-                  <div style={{ fontWeight: 700, color: "var(--text)" }}>
-                    {selectedMetric.icon} {metricValue(user)} · {selectedMetric.valueLabel}
+                  <div
+                    style={{
+                      width: "24px",
+                      textAlign: "right",
+                      fontWeight: 700,
+                    }}
+                  >
+                    {index + 1}
                   </div>
-                  <div>🎮 {Number(user.games_played ?? 0)} | ⚖️ {Number(user.win_rate ?? 0)}%</div>
+                  <img
+                    src={user.avatar_url || "/img/logo.svg"}
+                    alt=""
+                    style={{
+                      width: "28px",
+                      height: "28px",
+                      borderRadius: "50%",
+                      objectFit: "cover",
+                      border: "1px solid var(--line)",
+                    }}
+                  />
+                  <div
+                    style={{
+                      flex: 1,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {user.username || "Player"}
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "flex-end",
+                      gap: "4px",
+                      fontSize: "12px",
+                      color: "var(--muted)",
+                    }}
+                  >
+                    <div style={{ fontWeight: 700, color: "var(--text)" }}>
+                      {selectedMetric.icon} {metricValue(user)} ·{" "}
+                      {selectedMetric.valueLabel}
+                    </div>
+                    <div>
+                      🪙 {Number(user.coins_balance ?? 0)} | ⚖️{" "}
+                      {Number(user.win_rate ?? 0)}%
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))
-          )}
-        </div>
-      );
+              ))
+            )}
+          </div>
+        );
 
-      setModal({
-        title: "Топ игроков",
-        content,
-        primary: {
-          label: "Закрыть",
-          onClick: () => hideModal(),
-        },
-        secondary: { show: false },
-      });
-    } catch {
-      setModal({
-        title: "Топ игроков",
-        content: "Рейтинг недоступен. Проверь БД и /leaders.",
-        primary: {
-          label: "Закрыть",
-          onClick: () => hideModal(),
-        },
-        secondary: { show: false },
-      });
-    }
-  }, [hideModal, setModal]);
+        setModal({
+          title: "Топ игроков",
+          content,
+          primary: {
+            label: "Закрыть",
+            onClick: () => hideModal(),
+          },
+          secondary: { show: false },
+        });
+      } catch {
+        setModal({
+          title: "Топ игроков",
+          content: "Рейтинг недоступен. Проверь БД и /leaders.",
+          primary: {
+            label: "Закрыть",
+            onClick: () => hideModal(),
+          },
+          secondary: { show: false },
+        });
+      }
+    },
+    [hideModal, setModal],
+  );
 
   const loadProfile = useCallback(async () => {
     setModal({
@@ -847,20 +982,31 @@ export default function App() {
       secondary: { show: false },
     });
 
-    const profileResult = await statsSystemRef.current?.loadProfile({ force: true });
+    const profileResult = await statsSystemRef.current?.loadProfile({
+      force: true,
+    });
     const stats = profileResult?.summary || {};
     const profile = profileResult?.profile || null;
 
-    const fallbackName = me?.username?.trim() ? `@${sanitizeUsername(me.username)}` : me?.name || "Профиль";
+    const fallbackName = me?.username?.trim()
+      ? `@${sanitizeUsername(me.username)}`
+      : me?.name || "Профиль";
     const displayName = profile?.username || fallbackName;
     const avatarSrc = profile?.avatar_url || me?.avatar || "/img/logo.svg";
 
-    const achievements = Array.isArray(profile?.achievements) ? profile.achievements : [];
+    const achievements = Array.isArray(profile?.achievements)
+      ? profile.achievements
+      : [];
     const total = achievements.length;
     const unlocked = achievements.filter((item) => item?.unlocked).length;
-    const invitedUsers = Array.isArray(profile?.invited_users) ? profile.invited_users : [];
-    const invitedCount = Number(profile?.invited_count ?? invitedUsers.length ?? 0);
-    const referralLink = typeof profile?.ref_link === "string" ? profile.ref_link.trim() : "";
+    const invitedUsers = Array.isArray(profile?.invited_users)
+      ? profile.invited_users
+      : [];
+    const invitedCount = Number(
+      profile?.invited_count ?? invitedUsers.length ?? 0,
+    );
+    const referralLink =
+      typeof profile?.ref_link === "string" ? profile.ref_link.trim() : "";
 
     const handleCopyReferralLink = async () => {
       if (!referralLink) {
@@ -871,7 +1017,9 @@ export default function App() {
         await navigator.clipboard?.writeText(referralLink);
         notifications.success("Реферальная ссылка скопирована");
       } catch {
-        notifications.info("Не удалось скопировать ссылку. Скопируйте её вручную.");
+        notifications.info(
+          "Не удалось скопировать ссылку. Скопируйте её вручную.",
+        );
       }
     };
 
@@ -887,26 +1035,39 @@ export default function App() {
       <div className="achievements-section">
         <div className="achievements-header">
           <div className="achievements-title">Достижения</div>
-          <div className="achievements-counter">{total > 0 ? `${unlocked}/${total}` : "0/0"}</div>
+          <div className="achievements-counter">
+            {total > 0 ? `${unlocked}/${total}` : "0/0"}
+          </div>
         </div>
         {total === 0 ? (
-          <div className="achievements-empty">Достижения появятся после первой игры.</div>
+          <div className="achievements-empty">
+            Достижения появятся после первой игры.
+          </div>
         ) : (
           <div className="achievements-grid">
             {achievements.map((achievement, index) => {
-              const percent = clampPercent(Number(achievement?.progress_percent ?? 0));
+              const percent = clampPercent(
+                Number(achievement?.progress_percent ?? 0),
+              );
               const progressText = formatAchievementProgressText(achievement);
-              const frameClass = String(achievement?.extra?.frame || "").trim().toLowerCase();
+              const frameClass = String(achievement?.extra?.frame || "")
+                .trim()
+                .toLowerCase();
               const cardClasses = ["achievement-card"];
-              if (achievement?.unlocked) cardClasses.push("achievement-card--unlocked");
+              if (achievement?.unlocked)
+                cardClasses.push("achievement-card--unlocked");
 
               const frameClasses = ["achievement-frame"];
-              if (frameClass) frameClasses.push(`achievement-frame--${frameClass}`);
+              if (frameClass)
+                frameClasses.push(`achievement-frame--${frameClass}`);
 
               const hintText = buildAchievementHint(achievement);
 
               return (
-                <div className={cardClasses.join(" ")} key={`${achievement?.name || "achievement"}-${index}`}>
+                <div
+                  className={cardClasses.join(" ")}
+                  key={`${achievement?.name || "achievement"}-${index}`}
+                >
                   <div className={frameClasses.join(" ")}>
                     {achievement?.image_url ? (
                       <img
@@ -915,24 +1076,37 @@ export default function App() {
                         className="achievement-image"
                       />
                     ) : (
-                      <span className="achievement-icon">{achievement?.icon || "🏆"}</span>
+                      <span className="achievement-icon">
+                        {achievement?.icon || "🏆"}
+                      </span>
                     )}
                   </div>
                   <div className="achievement-body">
                     <div className="achievement-row">
-                      <div className="achievement-name">{achievement?.name || "Без названия"}</div>
+                      <div className="achievement-name">
+                        {achievement?.name || "Без названия"}
+                      </div>
                       <div className="achievement-status">
                         {achievement?.unlocked ? "Получено" : `${percent}%`}
                       </div>
                     </div>
-                    <div className="achievement-description">{achievement?.description || ""}</div>
+                    <div className="achievement-description">
+                      {achievement?.description || ""}
+                    </div>
                     <div className="achievement-progress">
                       <div className="achievement-progress-bar">
-                        <div className="achievement-progress-fill" style={{ width: `${percent}%` }} />
+                        <div
+                          className="achievement-progress-fill"
+                          style={{ width: `${percent}%` }}
+                        />
                       </div>
-                      <div className="achievement-progress-text">{progressText}</div>
+                      <div className="achievement-progress-text">
+                        {progressText}
+                      </div>
                     </div>
-                    {hintText ? <div className="achievement-hint">{hintText}</div> : null}
+                    {hintText ? (
+                      <div className="achievement-hint">{hintText}</div>
+                    ) : null}
                   </div>
                 </div>
               );
@@ -957,7 +1131,9 @@ export default function App() {
             }}
           />
           <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-            <div style={{ fontWeight: 800, fontSize: "16px" }}>{displayName}</div>
+            <div style={{ fontWeight: 800, fontSize: "16px" }}>
+              {displayName}
+            </div>
             {profile?.updated_at ? (
               <div style={{ fontSize: "12px", color: "var(--muted)" }}>
                 Обновлено: {formatDate(profile.updated_at)}
@@ -981,43 +1157,86 @@ export default function App() {
           ].map((item) => (
             <div
               key={item.label}
-              style={{ border: "1px solid var(--line)", borderRadius: "10px", padding: "10px", textAlign: "center" }}
+              style={{
+                border: "1px solid var(--line)",
+                borderRadius: "10px",
+                padding: "10px",
+                textAlign: "center",
+              }}
             >
-              <div style={{ fontSize: "12px", color: "var(--muted)" }}>{item.label}</div>
-              <div style={{ fontWeight: 800, fontSize: "16px" }}>{item.value ?? 0}</div>
+              <div style={{ fontSize: "12px", color: "var(--muted)" }}>
+                {item.label}
+              </div>
+              <div style={{ fontWeight: 800, fontSize: "16px" }}>
+                {item.value ?? 0}
+              </div>
             </div>
           ))}
         </div>
-        <div style={{ border: "1px solid var(--line)", borderRadius: "10px", padding: "10px", display: "flex", flexDirection: "column", gap: "10px" }}>
+        <div
+          style={{
+            border: "1px solid var(--line)",
+            borderRadius: "10px",
+            padding: "10px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "10px",
+          }}
+        >
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-            <div style={{ fontSize: "12px", color: "var(--muted)" }}>Ваша реферальная ссылка</div>
+            <div style={{ fontSize: "12px", color: "var(--muted)" }}>
+              Ваша реферальная ссылка
+            </div>
             {referralLink ? (
-              <div style={{ wordBreak: "break-all", fontSize: "13px" }}>{referralLink}</div>
+              <div style={{ wordBreak: "break-all", fontSize: "13px" }}>
+                {referralLink}
+              </div>
             ) : (
               <div style={{ fontSize: "13px", color: "var(--muted)" }}>
                 Ссылка появится после загрузки профиля.
               </div>
             )}
             <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-              <button type="button" className="btn" onClick={handleCopyReferralLink}>Copy</button>
-              <button type="button" className="btn primary" onClick={handleShareReferralLink}>Share</button>
+              <button
+                type="button"
+                className="btn"
+                onClick={handleCopyReferralLink}
+              >
+                Copy
+              </button>
+              <button
+                type="button"
+                className="btn primary"
+                onClick={handleShareReferralLink}
+              >
+                Share
+              </button>
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-            <div style={{ fontSize: "12px", color: "var(--muted)" }}>Приглашено друзей</div>
-            <div style={{ fontWeight: 800, fontSize: "18px" }}>{Number.isFinite(invitedCount) ? invitedCount : 0}</div>
+            <div style={{ fontSize: "12px", color: "var(--muted)" }}>
+              Приглашено друзей
+            </div>
+            <div style={{ fontWeight: 800, fontSize: "18px" }}>
+              {Number.isFinite(invitedCount) ? invitedCount : 0}
+            </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            <div style={{ fontSize: "12px", color: "var(--muted)" }}>Список приглашённых</div>
+            <div style={{ fontSize: "12px", color: "var(--muted)" }}>
+              Список приглашённых
+            </div>
             {invitedUsers.length === 0 ? (
               <div style={{ fontSize: "13px", color: "var(--muted)" }}>
-                Пока никого не приглашено. Поделитесь ссылкой с друзьями, чтобы увидеть их здесь.
+                Пока никого не приглашено. Поделитесь ссылкой с друзьями, чтобы
+                увидеть их здесь.
               </div>
             ) : (
               invitedUsers.map((invitedUser) => {
-                const username = typeof invitedUser?.username === "string" && invitedUser.username.trim()
-                  ? invitedUser.username
-                  : `ID ${invitedUser?.id ?? ""}`;
+                const username =
+                  typeof invitedUser?.username === "string" &&
+                  invitedUser.username.trim()
+                    ? invitedUser.username
+                    : `ID ${invitedUser?.id ?? ""}`;
                 return (
                   <div
                     key={`${invitedUser?.id || "unknown"}-${invitedUser?.created_at || "date"}`}
@@ -1033,14 +1252,36 @@ export default function App() {
                     <img
                       src={invitedUser?.avatar_url || "/img/logo.svg"}
                       alt={username}
-                      style={{ width: "30px", height: "30px", borderRadius: "50%", objectFit: "cover", border: "1px solid var(--line)" }}
+                      style={{
+                        width: "30px",
+                        height: "30px",
+                        borderRadius: "50%",
+                        objectFit: "cover",
+                        border: "1px solid var(--line)",
+                      }}
                     />
-                    <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-                      <div style={{ fontSize: "13px", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        minWidth: 0,
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: "13px",
+                          fontWeight: 700,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
                         {username}
                       </div>
                       <div style={{ fontSize: "12px", color: "var(--muted)" }}>
-                        Приглашён: {formatDate(invitedUser?.created_at) || "дата неизвестна"}
+                        Приглашён:{" "}
+                        {formatDate(invitedUser?.created_at) ||
+                          "дата неизвестна"}
                       </div>
                     </div>
                   </div>
@@ -1145,10 +1386,17 @@ export default function App() {
         setPendingInviteCode("");
         if (typeof window !== "undefined") {
           const url = new URL(window.location.href);
-          if (url.searchParams.has("ref") || url.searchParams.has("tgWebAppStartParam")) {
+          if (
+            url.searchParams.has("ref") ||
+            url.searchParams.has("tgWebAppStartParam")
+          ) {
             url.searchParams.delete("ref");
             url.searchParams.delete("tgWebAppStartParam");
-            window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+            window.history.replaceState(
+              {},
+              "",
+              `${url.pathname}${url.search}${url.hash}`,
+            );
           }
         }
         const rawOpp = msg.opp && typeof msg.opp === "object" ? msg.opp : null;
@@ -1156,15 +1404,20 @@ export default function App() {
           ? {
               id: rawOpp.id,
               name: typeof rawOpp.name === "string" ? rawOpp.name.trim() : "",
-              username: typeof rawOpp.username === "string" ? rawOpp.username.trim() : "",
-              avatar: typeof rawOpp.avatar === "string" ? rawOpp.avatar.trim() : "",
+              username:
+                typeof rawOpp.username === "string"
+                  ? rawOpp.username.trim()
+                  : "",
+              avatar:
+                typeof rawOpp.avatar === "string" ? rawOpp.avatar.trim() : "",
             }
           : null;
 
         setGame((prev) => {
-          const updatedOpp = incomingOpp && String(incomingOpp.id) === String(meRef.current.id)
-            ? null
-            : incomingOpp;
+          const updatedOpp =
+            incomingOpp && String(incomingOpp.id) === String(meRef.current.id)
+              ? null
+              : incomingOpp;
           return {
             ...prev,
             gameId: msg.gameId,
@@ -1179,7 +1432,10 @@ export default function App() {
         setWinLine(null);
         hideModal();
         const myMoveAllowed = msg.you && msg.turn && msg.you === msg.turn;
-        setStatus({ text: myMoveAllowed ? "Ваш ход" : "Ход оппонента", blink: false });
+        setStatus({
+          text: myMoveAllowed ? "Ваш ход" : "Ход оппонента",
+          blink: false,
+        });
         setNavMode("resign");
         notifications.success("Игра началась!");
         audioManager.playNotification();
@@ -1208,7 +1464,10 @@ export default function App() {
       if (msg.t === "queue.waiting") {
         const position = Number(msg.position ?? 0);
         if (Number.isFinite(position) && position > 0) {
-          setStatus({ text: `Поиск соперника… Позиция: ${position}`, blink: true });
+          setStatus({
+            text: `Поиск соперника… Позиция: ${position}`,
+            blink: true,
+          });
         }
         return;
       }
@@ -1234,10 +1493,12 @@ export default function App() {
         pendingInviteShareModeRef.current = "link";
 
         if (shareMode === "code") {
-          const inviteCode = typeof msg.code === "string" ? msg.code.trim() : "";
+          const inviteCode =
+            typeof msg.code === "string" ? msg.code.trim() : "";
           if (inviteCode) {
             setLobbyInviteCode(inviteCode);
-            navigator.clipboard?.writeText(inviteCode)
+            navigator.clipboard
+              ?.writeText(inviteCode)
               .then(() => notifications.success("Код лобби скопирован"))
               .catch(() => notifications.info(`Код лобби: ${inviteCode}`));
           } else {
@@ -1289,8 +1550,10 @@ export default function App() {
           if (msg.win.line) setWinLine(msg.win.line);
           setNavMode("rematch");
 
-          const youWon = msg.win.by !== null && msg.win.by === gameRef.current.you;
-          const youLost = msg.win.by !== null && msg.win.by !== gameRef.current.you;
+          const youWon =
+            msg.win.by !== null && msg.win.by === gameRef.current.you;
+          const youLost =
+            msg.win.by !== null && msg.win.by !== gameRef.current.you;
           const oppLabel = gameRef.current.opp?.name || "оппонент";
 
           let title = "Ничья 🤝";
@@ -1334,10 +1597,19 @@ export default function App() {
             },
           });
 
-          setStatus({ text: youWon ? "Победа!" : youLost ? "Поражение" : "Ничья", blink: false });
+          setStatus({
+            text: youWon ? "Победа!" : youLost ? "Поражение" : "Ничья",
+            blink: false,
+          });
         } else {
-          const allowed = gameRef.current.you && gameRef.current.you === msg.turn && gameRef.current.gameId;
-          setStatus({ text: allowed ? "Ваш ход" : "Ход оппонента", blink: false });
+          const allowed =
+            gameRef.current.you &&
+            gameRef.current.you === msg.turn &&
+            gameRef.current.gameId;
+          setStatus({
+            text: allowed ? "Ваш ход" : "Ход оппонента",
+            blink: false,
+          });
           if (allowed) audioManager.playMove();
         }
         return;
@@ -1503,7 +1775,7 @@ export default function App() {
       setModal,
       shareInviteLink,
       toLobby,
-    ]
+    ],
   );
 
   const { send: sendWsRaw } = useWebSocket({
@@ -1535,10 +1807,15 @@ export default function App() {
       .then((data) => {
         const profile = data?.profile || null;
         if (!profile) return;
-        if (!gameRef.current.opp || normalizeId(gameRef.current.opp.id) !== id) return;
+        if (!gameRef.current.opp || normalizeId(gameRef.current.opp.id) !== id)
+          return;
 
-        const avatar = typeof profile.avatar_url === "string" ? profile.avatar_url.trim() : "";
-        const usernameRaw = typeof profile.username === "string" ? profile.username.trim() : "";
+        const avatar =
+          typeof profile.avatar_url === "string"
+            ? profile.avatar_url.trim()
+            : "";
+        const usernameRaw =
+          typeof profile.username === "string" ? profile.username.trim() : "";
         const username = usernameRaw.replace(/^@/, "");
 
         setGame((prev) => {
@@ -1551,7 +1828,9 @@ export default function App() {
           return {
             ...prev,
             opp: updatedOpp,
-            lastOpp: prev.lastOpp ? { ...prev.lastOpp, ...updatedOpp } : updatedOpp,
+            lastOpp: prev.lastOpp
+              ? { ...prev.lastOpp, ...updatedOpp }
+              : updatedOpp,
           };
         });
       })
@@ -1573,7 +1852,9 @@ export default function App() {
     };
 
     const handleVisibilityChange = () => {
-      document.body.style.animationPlayState = document.hidden ? "paused" : "running";
+      document.body.style.animationPlayState = document.hidden
+        ? "paused"
+        : "running";
     };
 
     document.addEventListener("keydown", handleKeyDown);
@@ -1598,8 +1879,15 @@ export default function App() {
       description: "Быстрый матч через общую очередь игроков.",
       onSelect: handlePlayOnline,
       renderExtra: () => (
-        <div className="mode-card__friend-actions" onClick={(event) => event.stopPropagation()}>
-          <button type="button" className="mode-card__friend-button" onClick={createFriendsLobby}>
+        <div
+          className="mode-card__friend-actions"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <button
+            type="button"
+            className="mode-card__friend-button"
+            onClick={createFriendsLobby}
+          >
             Создать
           </button>
           {friendInviteInputVisible ? (
@@ -1611,7 +1899,11 @@ export default function App() {
                 placeholder="Введите инвайт-код"
                 autoFocus
               />
-              <button type="button" className="mode-card__friend-button mode-card__friend-button--alt" onClick={joinFriendsLobby}>
+              <button
+                type="button"
+                className="mode-card__friend-button mode-card__friend-button--alt"
+                onClick={joinFriendsLobby}
+              >
                 Войти
               </button>
             </div>
@@ -1634,8 +1926,15 @@ export default function App() {
       description: "Создайте лобби или подключитесь по коду приглашения.",
       onSelect: null,
       renderExtra: () => (
-        <div className="mode-card__friend-actions" onClick={(event) => event.stopPropagation()}>
-          <button type="button" className="mode-card__friend-button" onClick={createFriendsLobby}>
+        <div
+          className="mode-card__friend-actions"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <button
+            type="button"
+            className="mode-card__friend-button"
+            onClick={createFriendsLobby}
+          >
             Создать
           </button>
           {friendInviteInputVisible ? (
@@ -1647,7 +1946,11 @@ export default function App() {
                 placeholder="Введите инвайт-код"
                 autoFocus
               />
-              <button type="button" className="mode-card__friend-button mode-card__friend-button--alt" onClick={joinFriendsLobby}>
+              <button
+                type="button"
+                className="mode-card__friend-button mode-card__friend-button--alt"
+                onClick={joinFriendsLobby}
+              >
                 Войти
               </button>
             </div>
@@ -1670,8 +1973,15 @@ export default function App() {
       description: "Сыграйте матч против компьютера.",
       onSelect: startComputerGame,
       renderExtra: () => (
-        <div className="mode-card__friend-actions" onClick={(event) => event.stopPropagation()}>
-          <button type="button" className="mode-card__friend-button" onClick={createFriendsLobby}>
+        <div
+          className="mode-card__friend-actions"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <button
+            type="button"
+            className="mode-card__friend-button"
+            onClick={createFriendsLobby}
+          >
             Создать
           </button>
           {friendInviteInputVisible ? (
@@ -1683,7 +1993,11 @@ export default function App() {
                 placeholder="Введите инвайт-код"
                 autoFocus
               />
-              <button type="button" className="mode-card__friend-button mode-card__friend-button--alt" onClick={joinFriendsLobby}>
+              <button
+                type="button"
+                className="mode-card__friend-button mode-card__friend-button--alt"
+                onClick={joinFriendsLobby}
+              >
                 Войти
               </button>
             </div>
@@ -1718,7 +2032,8 @@ export default function App() {
           lobbyInviteCode={lobbyInviteCode}
           onInviteCodeClick={() => {
             if (!lobbyInviteCode) return;
-            navigator.clipboard?.writeText(lobbyInviteCode)
+            navigator.clipboard
+              ?.writeText(lobbyInviteCode)
               .then(() => notifications.success("Код лобби скопирован"))
               .catch(() => notifications.info(`Код лобби: ${lobbyInviteCode}`));
           }}
@@ -1734,12 +2049,19 @@ export default function App() {
           lobbyInviteCode={lobbyInviteCode}
           onInviteCodeClick={() => {
             if (!lobbyInviteCode) return;
-            navigator.clipboard?.writeText(lobbyInviteCode)
+            navigator.clipboard
+              ?.writeText(lobbyInviteCode)
               .then(() => notifications.success("Код лобби скопирован"))
               .catch(() => notifications.info(`Код лобби: ${lobbyInviteCode}`));
           }}
           modesLayout
-          boardContent={<GameModesCarousel items={modeCards} activeIndex={activeModeIndex} onChange={setActiveModeIndex} />}
+          boardContent={
+            <GameModesCarousel
+              items={modeCards}
+              activeIndex={activeModeIndex}
+              onChange={setActiveModeIndex}
+            />
+          }
         />
       )}
       <Nav
@@ -1757,7 +2079,10 @@ export default function App() {
         primary={modalState.primary}
         secondary={modalState.secondary}
       />
-      <Notifications items={notifications.notifications} onClose={notifications.remove} />
+      <Notifications
+        items={notifications.notifications}
+        onClose={notifications.remove}
+      />
     </div>
   );
 }
