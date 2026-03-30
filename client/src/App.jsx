@@ -281,6 +281,7 @@ export default function App() {
     useState(false);
   const [friendInviteInput, setFriendInviteInput] = useState("");
   const [lobbyInviteCode, setLobbyInviteCode] = useState("");
+  const [isFriendsLobbyState, setIsFriendsLobbyState] = useState(false);
   const [navMode, setNavMode] = useState("find");
   const [onlineStats, setOnlineStats] = useState({
     total: 0,
@@ -471,7 +472,8 @@ export default function App() {
     [sendWs],
   );
 
-  const toLobby = useCallback(() => {
+  const toLobby = useCallback((options = {}) => {
+    const { isFriendsFlow = false } = options;
     if (botTimeoutRef.current) {
       clearTimeout(botTimeoutRef.current);
       botTimeoutRef.current = null;
@@ -493,22 +495,29 @@ export default function App() {
     hideModal();
     setScreen("modes");
     setStatus({ text: "Готово", blink: false });
-    setLobbyInviteCode("");
+    if (!isFriendsFlow) {
+      setLobbyInviteCode("");
+      setIsFriendsLobbyState(false);
+    }
     sendWs({ t: "queue.leave" });
   }, [hideModal, sendWs]);
 
   const handlePlayOnline = useCallback(() => {
+    setLobbyInviteCode("");
+    setIsFriendsLobbyState(false);
     startQueueSearch();
   }, [startQueueSearch]);
 
   const createFriendsLobby = useCallback(() => {
     pendingInviteShareModeRef.current = "code";
+    setIsFriendsLobbyState(true);
     setFriendInviteInputVisible(false);
     setFriendInviteInput("");
     createInvite();
   }, [createInvite]);
 
   const joinFriendsLobby = useCallback(() => {
+    setIsFriendsLobbyState(true);
     const code = friendInviteInput.trim();
     if (!code) {
       notifications.info("Введите код приглашения");
@@ -574,6 +583,8 @@ export default function App() {
   );
 
   const startComputerGame = useCallback(() => {
+    setLobbyInviteCode("");
+    setIsFriendsLobbyState(false);
     const strategies = Object.keys(BOT_STRATEGIES);
     const strategy =
       strategies[Math.floor(Math.random() * strategies.length)] || "random";
@@ -1533,6 +1544,7 @@ export default function App() {
 
       if (msg.t === "invite.connected") {
         setLobbyInviteCode("");
+        setIsFriendsLobbyState(false);
         notifications.success("Игрок по приглашению подключился");
         setStatus({ text: "Игрок найден по приглашению", blink: false });
         return;
@@ -1982,6 +1994,10 @@ export default function App() {
     },
   ];
 
+  const activeModeId = modeCards[activeModeIndex]?.id || "";
+  const showInviteCode =
+    activeModeId === "friends" || isFriendsLobbyState;
+
   const shouldShowBoard = Boolean(game.gameId || screen === "game");
   const isLobbyScreen = !shouldShowBoard;
 
@@ -1996,7 +2012,7 @@ export default function App() {
           winLine={winLine}
           onCellClick={handleCellClick}
           onAuthorClick={handleAuthorClick}
-          lobbyInviteCode={lobbyInviteCode}
+          lobbyInviteCode={showInviteCode ? lobbyInviteCode : ""}
           onInviteCodeClick={() => {
             if (!lobbyInviteCode) return;
             navigator.clipboard
@@ -2013,7 +2029,7 @@ export default function App() {
           statusText={status}
           onCellClick={handleCellClick}
           onAuthorClick={handleAuthorClick}
-          lobbyInviteCode={lobbyInviteCode}
+          lobbyInviteCode={showInviteCode ? lobbyInviteCode : ""}
           onInviteCodeClick={() => {
             if (!lobbyInviteCode) return;
             navigator.clipboard
