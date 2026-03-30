@@ -409,7 +409,7 @@ export default function App() {
 
   const createInvite = useCallback(() => {
     setLobbyInviteCode("");
-    setScreen("game");
+    setScreen("modes");
     sendWs({ t: "invite.create" });
     setStatus({ text: "Создаём ссылку приглашения…", blink: true });
     audioManager.playClick();
@@ -425,7 +425,7 @@ export default function App() {
 
   const startQueueSearch = useCallback(
     ({ notify = true, playSound = true } = {}) => {
-      setScreen("game");
+      setScreen("modes");
       sendWs({ t: "queue.join" });
       setNavMode("waiting");
       setStatus({ text: "Поиск соперника…", blink: true });
@@ -1483,12 +1483,14 @@ export default function App() {
       }
 
       if (msg.t === "queue.joined") {
+        setScreen("modes");
         setNavMode("waiting");
         setStatus({ text: "Поиск соперника…", blink: true });
         return;
       }
 
       if (msg.t === "queue.waiting") {
+        setScreen("modes");
         const position = Number(msg.position ?? 0);
         if (Number.isFinite(position) && position > 0) {
           setStatus({
@@ -1937,6 +1939,10 @@ export default function App() {
       title: "Играть онлайн",
       description: "Быстрый матч через общую очередь игроков.",
       onSelect: handlePlayOnline,
+      renderExtra: () =>
+        navMode === "waiting" ? (
+          <span className="mode-card__chip">Поиск</span>
+        ) : null,
     },
     {
       id: "friends",
