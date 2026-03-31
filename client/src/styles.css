@@ -326,7 +326,6 @@ body {
   background-color: var(--dot-active-bg);
   opacity: 1;
   transform: scale(1.02);
-  padding-bottom: 20px;
 }
 
 @keyframes cardFloat {
@@ -367,7 +366,7 @@ body {
 .wrap--modes {
   flex: 1;
   min-height: 0;
-  padding-bottom: 0;
+  padding-bottom: 20px;
 }
 .wrap--game {
   justify-content: flex-start;
