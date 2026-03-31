@@ -18,22 +18,22 @@ import { apiUrl, resolveWsUrl } from "./utils/network.js";
 import { parseStartPayload } from "./utils/startPayload.js";
 
 const WIN_PHRASES = [
-  "Поздравляем! Вы сыграли мощно 👑",
-  "Отличная победа! Так держать 🚀",
-  "Браво! Красиво переиграли соперника 🏆",
-  "Победа за вами! Скилл на месте 🔥",
+  "Поздравляем! Вы сыграли мощно.",
+  "Отличная победа! Так держать.",
+  "Браво! Красиво переиграли соперника.",
+  "Победа за вами! Скилл на месте.",
 ];
 const LOSE_PHRASES = [
-  "Ничего страшного, получится в следующий раз! 💪",
-  "Хорошая попытка! Ещё немного — и победа будет ваша ✨",
-  "Не сдавайтесь — следующий матч за вами 💥",
-  "Сильная игра! Чуть-чуть не хватило, но всё впереди 🧠",
+  "Ничего страшного, получится в следующий раз.",
+  "Хорошая попытка! Ещё немного — и победа будет ваша.",
+  "Не сдавайтесь — следующий матч за вами.",
+  "Сильная игра! Чуть-чуть не хватило, но всё впереди.",
 ];
 const DRAW_PHRASES = [
-  "Отличный матч! Вы держались на равных 🤝",
-  "Крутая заруба — никто не уступил! ⚖️",
-  "Это была достойная ничья. До новой встречи! 🎲",
-  "Ни шагу назад! Равная борьба до конца 💫",
+  "Отличный матч! Вы держались на равных.",
+  "Крутая заруба — никто не уступил.",
+  "Это была достойная ничья. До новой встречи!",
+  "Ни шагу назад! Равная борьба до конца.",
 ];
 
 const WIN_LINES = [
@@ -240,6 +240,22 @@ const RATING_METRICS = [
     iconType: "handshake",
   },
 ];
+const ICON_PATHS = {
+  coin: "/img/coin.svg",
+  trophy: "/img/trophy.svg",
+  medal: "/img/medal.svg",
+  handshake: "/img/handshake.svg",
+  achievement: "/img/default-achievement.svg",
+};
+
+function resolveIconPath(iconType) {
+  const raw = String(iconType ?? "").trim();
+  if (!raw) return ICON_PATHS.achievement;
+  if (raw.startsWith("/") || raw.startsWith("http://") || raw.startsWith("https://")) {
+    return raw;
+  }
+  return ICON_PATHS[raw] || ICON_PATHS.achievement;
+}
 
 function getRatingMetricConfig(metric) {
   return (
@@ -248,16 +264,14 @@ function getRatingMetricConfig(metric) {
 }
 
 function renderMetricIcon(iconType, className = "metric-icon") {
-  if (iconType === "coin") {
-    return <img src="/img/coin.svg" alt="" aria-hidden="true" className={`coin-icon ${className}`.trim()} />;
-  }
-
-  const iconMap = {
-    trophy: "🏆",
-    medal: "🎖️",
-    handshake: "🤝",
-  };
-  return <span className={className}>{iconMap[iconType] || "🏆"}</span>;
+  return (
+    <img
+      src={resolveIconPath(iconType)}
+      alt=""
+      aria-hidden="true"
+      className={`coin-icon ${className}`.trim()}
+    />
+  );
 }
 
 function resolveStartParamFromLocation() {
@@ -637,19 +651,19 @@ export default function App() {
       setWinLine(line);
       setNavMode("find");
 
-      let title = "Ничья 🤝";
+      let title = "Ничья";
       let text = "Матч с компьютером завершился ничьей.";
       let phrasePool = DRAW_PHRASES;
       let statusText = "Ничья";
 
       if (result === "win") {
-        title = "Победа в серии 🎉";
+        title = "Победа в серии";
         text = "Вы выиграли серию у компьютера.";
         phrasePool = WIN_PHRASES;
         statusText = "Победа в серии!";
         audioManager.playWin();
       } else if (result === "lose") {
-        title = "Поражение в серии 😔";
+        title = "Поражение в серии";
         text = "Компьютер выиграл серию.";
         phrasePool = LOSE_PHRASES;
         statusText = "Поражение в серии";
@@ -722,17 +736,17 @@ export default function App() {
         return;
       }
 
-      let title = "Ничья в раунде 🤝";
+      let title = "Ничья в раунде";
       let text = `Раунд ${currentRound} завершился ничьей.`;
       let statusText = "Ничья в раунде";
 
       if (result === "win") {
-        title = "Раунд за вами 🎉";
+        title = "Раунд за вами";
         text = `Вы выиграли раунд ${currentRound}.`;
         statusText = "Раунд выигран!";
         audioManager.playWin();
       } else if (result === "lose") {
-        title = "Раунд за компьютером 😔";
+        title = "Раунд за компьютером";
         text = `Компьютер выиграл раунд ${currentRound}.`;
         statusText = "Раунд проигран";
         audioManager.playLose();
@@ -1115,7 +1129,7 @@ export default function App() {
                       {selectedMetric.valueLabel}
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      {renderMetricIcon("coin")} {Number(user.coins_balance ?? 0)} | ⚖️{" "}
+                      {renderMetricIcon("coin")} {Number(user.coins_balance ?? 0)} | {renderMetricIcon("medal")}{" "}
                       {Number(user.win_rate ?? 0)}%
                     </div>
                   </div>
@@ -1242,23 +1256,21 @@ export default function App() {
 
               const hintText = buildAchievementHint(achievement);
 
+              const achievementIconSrc = achievement?.image_url
+                ? achievement.image_url
+                : resolveIconPath(achievement?.icon);
+
               return (
                 <div
                   className={cardClasses.join(" ")}
                   key={`${achievement?.name || "achievement"}-${index}`}
                 >
                   <div className={frameClasses.join(" ")}>
-                    {achievement?.image_url ? (
-                      <img
-                        src={achievement.image_url}
-                        alt={achievement?.name || ""}
-                        className="achievement-image"
-                      />
-                    ) : (
-                      <span className="achievement-icon">
-                        {achievement?.icon || "🏆"}
-                      </span>
-                    )}
+                    <img
+                      src={achievementIconSrc}
+                      alt={achievement?.name || "Достижение"}
+                      className="achievement-image"
+                    />
                   </div>
                   <div className="achievement-body">
                     <div className="achievement-row">
@@ -1800,14 +1812,14 @@ export default function App() {
         let statusText = "Матч завершён";
 
         if (youWon) {
-          title = "Победа в матче 🎉";
+          title = "Победа в матче";
           mainText = "Вы выиграли серию!";
           phrases = WIN_PHRASES;
           statusText = "Победа в матче!";
           audioManager.playWin();
           statsSystemRef.current?.endGame("win");
         } else if (youLost) {
-          title = "Поражение в матче 😔";
+          title = "Поражение в матче";
           mainText = "Соперник выиграл серию.";
           phrases = LOSE_PHRASES;
           statusText = "Поражение в матче";
@@ -1871,14 +1883,14 @@ export default function App() {
 
         if (msg.reason === "resign") {
           if (youWon) {
-            title = "Победа 🎉";
+            title = "Победа";
             mainText = "Оппонент сдался.";
             phrases = WIN_PHRASES;
             statusText = "Победа!";
             audioManager.playWin();
             statsSystemRef.current?.endGame("win");
           } else if (youLost) {
-            title = "Поражение 😔";
+            title = "Поражение";
             mainText = "Вы сдались.";
             phrases = LOSE_PHRASES;
             statusText = "Поражение";
@@ -1890,14 +1902,14 @@ export default function App() {
           }
         } else if (msg.reason === "disconnect") {
           if (youWon) {
-            title = "Победа 🎉";
+            title = "Победа";
             mainText = "Оппонент отключился.";
             phrases = WIN_PHRASES;
             statusText = "Победа!";
             audioManager.playWin();
             statsSystemRef.current?.endGame("win");
           } else if (youLost) {
-            title = "Поражение 😔";
+            title = "Поражение";
             mainText = "Вы были отключены.";
             phrases = LOSE_PHRASES;
             statusText = "Поражение";
@@ -1909,13 +1921,13 @@ export default function App() {
           }
         } else {
           if (youWon) {
-            title = "Победа 🎉";
+            title = "Победа";
             mainText = "Вы победили!";
             phrases = WIN_PHRASES;
             statusText = "Победа!";
             statsSystemRef.current?.endGame("win");
           } else if (youLost) {
-            title = "Поражение 😔";
+            title = "Поражение";
             mainText = "Вы проиграли.";
             phrases = LOSE_PHRASES;
             statusText = "Поражение";
@@ -2115,7 +2127,7 @@ export default function App() {
     },
     {
       id: "friends",
-      image: "/img/profile-info.svg",
+      image: "/img/frends.svg",
       title: "Играть с друзьями",
       description: "Создайте лобби или подключитесь по коду приглашения.",
       onSelect: null,
