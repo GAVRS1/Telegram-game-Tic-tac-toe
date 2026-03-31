@@ -130,7 +130,10 @@ export function Board({
                 </div>
               </article>
 
-              <article className={`badge ${oppTurn ? "badge--active" : ""}`.trim()} id="oppBadge">
+              <article
+                className={`badge badge--opponent ${oppTurn ? "badge--active" : ""}`.trim()}
+                id="oppBadge"
+              >
                 <div className="info">
                   <img className="ava" id="oppAva" src={oppAvatar} alt={oppLabel} />
                   <div className="text">
