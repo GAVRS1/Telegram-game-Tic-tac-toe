@@ -2117,8 +2117,6 @@ export default function App() {
     {
       id: "online",
       image: "/img/search.svg",
-      imageClassName: navMode === "waiting" ? "mode-card__image--searching" : "",
-      mediaClassName: navMode === "waiting" ? "mode-card__media--searching" : "",
       title: "Играть онлайн",
       description: "Быстрый матч через общую очередь игроков.",
       onSelect: handlePlayOnline,

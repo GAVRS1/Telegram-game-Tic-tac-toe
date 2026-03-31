@@ -79,7 +79,7 @@ body {
   height: 100%;
   padding: 4px 0;
   overflow: hidden;
-  touch-action: pan-y pinch-zoom;
+  touch-action: pan-x pinch-zoom;
   user-select: none;
 }
 .modes-carousel__track {
@@ -366,7 +366,7 @@ body {
 .wrap--modes {
   flex: 1;
   min-height: 0;
-  padding-bottom: 20px;
+  padding-bottom: 0;
 }
 .wrap--game {
   justify-content: flex-start;
@@ -403,6 +403,8 @@ body {
   height: 100%;
   display: grid;
   grid-template-rows: auto auto auto minmax(0, 1fr);
+  justify-items: center;
+  align-content: start;
 }
 .card--modes {
   flex: 1;
@@ -546,13 +548,13 @@ body {
 
 /* ====== ДОСКА 3×3 ====== */
 .board {
-  width: min(100%, 360px);
+  width: min(100%, 430px);
   aspect-ratio: 1/1;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: clamp(6px, 1.2vmin, 10px);
   margin: 0 auto;
-  max-height: 100%;
+  max-height: min(100%, 430px);
   transition:
     transform var(--anim-base) var(--anim-ease),
     opacity var(--anim-fast) var(--anim-ease),
