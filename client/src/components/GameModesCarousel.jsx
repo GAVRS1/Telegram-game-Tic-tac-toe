@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-const SWIPE_THRESHOLD = 35;
-const WHEEL_THRESHOLD = 45;
+const SWIPE_THRESHOLD = 24;
+const WHEEL_THRESHOLD = 30;
 
 export function GameModesCarousel({ items, activeIndex, onChange }) {
   const pointerStateRef = useRef({ id: null, startX: 0, dragging: false });
@@ -80,7 +80,9 @@ export function GameModesCarousel({ items, activeIndex, onChange }) {
   const onWheel = useCallback(
     (event) => {
       event.preventDefault();
-      wheelCarryRef.current += event.deltaY;
+      const primaryDelta =
+        Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+      wheelCarryRef.current += primaryDelta;
 
       if (Math.abs(wheelCarryRef.current) < WHEEL_THRESHOLD) return;
 
@@ -129,6 +131,7 @@ export function GameModesCarousel({ items, activeIndex, onChange }) {
         onPointerMove={onPointerMove}
         onPointerUp={clearPointer}
         onPointerCancel={clearPointer}
+        onPointerLeave={clearPointer}
         onWheel={onWheel}
       >
         <div
