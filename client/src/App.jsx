@@ -571,6 +571,67 @@ export default function App() {
     audioManager.playClick();
   }, [friendInviteInput, notifications, sendWs]);
 
+  const startComputerGame = useCallback(() => {
+    setLobbyInviteCode("");
+    setIsFriendsLobbyState(false);
+    setFriendInviteInputVisible(false);
+    setFriendInviteInput("");
+    const strategies = Object.keys(BOT_STRATEGIES);
+    const strategy =
+      strategies[Math.floor(Math.random() * strategies.length)] || "random";
+    const playerMark = "X";
+    const botMark = "O";
+
+    if (botTimeoutRef.current) {
+      clearTimeout(botTimeoutRef.current);
+      botTimeoutRef.current = null;
+    }
+
+    setWinLine(null);
+    setStatus({ text: "Ваш ход", blink: false });
+    setGame((prev) => ({
+      ...prev,
+      turn: playerMark,
+      board: Array(9).fill(null),
+      roundWinsX: 0,
+      roundWinsO: 0,
+      roundNumber: 1,
+    }));
+
+    setBotState({
+      active: true,
+      strategy,
+      playerMark,
+      botMark,
+      playerMoves: [],
+    });
+    setScreen("game");
+    setNavMode("resign");
+    setGame((prev) => ({
+      ...prev,
+      gameId: "local-bot",
+      you: playerMark,
+      turn: playerMark,
+      board: Array(9).fill(null),
+      opp: {
+        id: "bot",
+        name: "Компьютер",
+        username: "bot",
+        avatar: "/img/logo.svg",
+      },
+      lastOpp: {
+        id: "bot",
+        name: "Компьютер",
+        username: "bot",
+        avatar: "/img/logo.svg",
+      },
+      roundWinsX: 0,
+      roundWinsO: 0,
+      roundNumber: 1,
+      matchTargetWins: 1,
+    }));
+  }, []);
+
   const finishComputerGame = useCallback(
     (result, board, line = null) => {
       setWinLine(line);
@@ -605,7 +666,7 @@ export default function App() {
           label: "Сыграть снова",
           onClick: () => {
             hideModal();
-            setScreen("modes");
+            startComputerGame();
           },
         },
         secondary: {
@@ -622,58 +683,8 @@ export default function App() {
         setGame((prev) => ({ ...prev, board: board.slice(), turn: null }));
       }
     },
-    [hideModal, setModal, toLobby],
+    [hideModal, setModal, startComputerGame, toLobby],
   );
-
-  const startComputerGame = useCallback(() => {
-    setLobbyInviteCode("");
-    setIsFriendsLobbyState(false);
-    const strategies = Object.keys(BOT_STRATEGIES);
-    const strategy =
-      strategies[Math.floor(Math.random() * strategies.length)] || "random";
-    const playerMark = "X";
-    const botMark = "O";
-
-    if (botTimeoutRef.current) {
-      clearTimeout(botTimeoutRef.current);
-      botTimeoutRef.current = null;
-    }
-
-    setBotState({
-      active: true,
-      strategy,
-      playerMark,
-      botMark,
-      playerMoves: [],
-    });
-    setWinLine(null);
-    setScreen("game");
-    setNavMode("resign");
-    setStatus({ text: "Ваш ход", blink: false });
-    setGame((prev) => ({
-      ...prev,
-      gameId: "local-bot",
-      you: playerMark,
-      turn: playerMark,
-      board: Array(9).fill(null),
-      opp: {
-        id: "bot",
-        name: "Компьютер",
-        username: "bot",
-        avatar: "/img/logo.svg",
-      },
-      lastOpp: {
-        id: "bot",
-        name: "Компьютер",
-        username: "bot",
-        avatar: "/img/logo.svg",
-      },
-      roundWinsX: 0,
-      roundWinsO: 0,
-      roundNumber: 1,
-      matchTargetWins: 1,
-    }));
-  }, []);
 
   const declineRematch = useCallback(
     (fromId) => {
@@ -1449,6 +1460,15 @@ export default function App() {
       }
 
       if (msg.t === "game.start") {
+        if (botTimeoutRef.current) {
+          clearTimeout(botTimeoutRef.current);
+          botTimeoutRef.current = null;
+        }
+        setBotState(initialBotState);
+        setFriendInviteInputVisible(false);
+        setFriendInviteInput("");
+        setIsFriendsLobbyState(false);
+        pendingInviteShareModeRef.current = "link";
         setScreen("game");
         setPendingInviteCode("");
         if (typeof window !== "undefined") {
