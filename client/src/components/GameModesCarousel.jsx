@@ -6,6 +6,8 @@ const WHEEL_THRESHOLD = 45;
 export function GameModesCarousel({ items, activeIndex, onChange }) {
   const pointerStateRef = useRef({ id: null, startX: 0, dragging: false });
   const wheelCarryRef = useRef(0);
+  const isAnimatingRef = useRef(false);
+  const queuedDeltaRef = useRef(0);
   const [isDragging, setIsDragging] = useState(false);
   const [visualIndex, setVisualIndex] = useState(activeIndex + 1);
   const [isTransitionEnabled, setIsTransitionEnabled] = useState(true);
@@ -29,6 +31,11 @@ export function GameModesCarousel({ items, activeIndex, onChange }) {
   const move = useCallback(
     (delta) => {
       if (itemCount <= 0 || typeof onChange !== "function") return;
+      if (isAnimatingRef.current) {
+        queuedDeltaRef.current = delta > 0 ? 1 : -1;
+        return;
+      }
+      isAnimatingRef.current = true;
       setIsTransitionEnabled(true);
       setVisualIndex((current) => current + delta);
     },
@@ -36,6 +43,7 @@ export function GameModesCarousel({ items, activeIndex, onChange }) {
   );
 
   const onPointerDown = useCallback((event) => {
+    event.currentTarget.setPointerCapture?.(event.pointerId);
     pointerStateRef.current = {
       id: event.pointerId,
       startX: event.clientX,
@@ -64,6 +72,7 @@ export function GameModesCarousel({ items, activeIndex, onChange }) {
 
   const clearPointer = useCallback((event) => {
     if (pointerStateRef.current.id !== event.pointerId) return;
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
     pointerStateRef.current = { id: null, startX: 0, dragging: false };
     setIsDragging(false);
   }, []);
@@ -87,17 +96,26 @@ export function GameModesCarousel({ items, activeIndex, onChange }) {
     if (visualIndex === 0) {
       setIsTransitionEnabled(false);
       setVisualIndex(itemCount);
+      isAnimatingRef.current = false;
       return;
     }
 
     if (visualIndex === itemCount + 1) {
       setIsTransitionEnabled(false);
       setVisualIndex(1);
+      isAnimatingRef.current = false;
       return;
     }
 
     if (typeof onChange === "function" && normalizedVisualIndex !== activeIndex) {
       onChange(normalizedVisualIndex);
+    }
+
+    isAnimatingRef.current = false;
+    if (queuedDeltaRef.current !== 0) {
+      const queued = queuedDeltaRef.current;
+      queuedDeltaRef.current = 0;
+      move(queued);
     }
   }, [activeIndex, itemCount, normalizedVisualIndex, onChange, visualIndex]);
 
@@ -145,8 +163,17 @@ export function GameModesCarousel({ items, activeIndex, onChange }) {
                   }
                 }}
               >
-                <div className="mode-card__media" aria-hidden="true">
-                  {item.image ? <img src={item.image} alt="" className="mode-card__image" /> : null}
+                <div
+                  className={`mode-card__media ${item.mediaClassName || ""}`.trim()}
+                  aria-hidden="true"
+                >
+                  {item.image ? (
+                    <img
+                      src={item.image}
+                      alt=""
+                      className={`mode-card__image ${item.imageClassName || ""}`.trim()}
+                    />
+                  ) : null}
                 </div>
                 <div className="mode-card__title-row">
                   <div className="mode-card__title">{item.title}</div>
