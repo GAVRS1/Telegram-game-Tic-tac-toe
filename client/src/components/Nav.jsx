@@ -4,14 +4,12 @@ const ICONS = {
   find: "/img/search.svg",
   waiting: "/img/waiting.svg",
   resign: "/img/surrender.svg",
-  rematch: "/img/search.svg",
 };
 
 const LABELS = {
   find: "Найти",
   waiting: "Поиск",
   resign: "Сдаться",
-  rematch: "Реванш",
 };
 
 export function Nav({
@@ -22,8 +20,7 @@ export function Nav({
   isGameScreen = false,
 }) {
   const label = LABELS[mode] || "Действие";
-  const showCenterAction =
-    isGameScreen && (mode === "resign" || mode === "rematch");
+  const showCenterAction = isGameScreen && mode === "resign";
 
   return (
     <div

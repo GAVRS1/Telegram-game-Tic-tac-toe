@@ -736,62 +736,38 @@ export default function App() {
         return;
       }
 
-      let title = "Ничья в раунде";
-      let text = `Раунд ${currentRound} завершился ничьей.`;
-      let statusText = "Ничья в раунде";
+      let statusText = "Ничья в раунде. Новый раунд…";
 
       if (result === "win") {
-        title = "Раунд за вами";
-        text = `Вы выиграли раунд ${currentRound}.`;
-        statusText = "Раунд выигран!";
+        statusText = `Вы выиграли раунд ${currentRound}. Новый раунд…`;
         audioManager.playWin();
       } else if (result === "lose") {
-        title = "Раунд за компьютером";
-        text = `Компьютер выиграл раунд ${currentRound}.`;
-        statusText = "Раунд проигран";
+        statusText = `Компьютер выиграл раунд ${currentRound}. Новый раунд…`;
         audioManager.playLose();
       } else {
         audioManager.playDraw();
       }
 
       setStatus({ text: statusText, blink: false });
-      setModal({
-        title,
-        content: (
-          <>
-            <p className="modal-text">{text}</p>
-            <p className="modal-phrase">
-              Счёт серии: {playerSeriesWins}:{botSeriesWins} (до {targetWins})
-            </p>
-          </>
-        ),
-        primary: {
-          label: "Следующий раунд",
-          onClick: () => {
-            hideModal();
-            setWinLine(null);
-            setStatus({ text: "Ваш ход", blink: false });
-            setGame((prev) => ({
-              ...prev,
-              board: Array(9).fill(null),
-              turn: playerMark,
-              roundNumber: (Number(prev.roundNumber ?? 1) || 1) + 1,
-            }));
-            setNavMode("resign");
-            setBotState((prev) => ({ ...prev, playerMoves: [] }));
-          },
-        },
-        secondary: {
-          label: "Выйти",
-          onClick: () => {
-            hideModal();
-            toLobby();
-            setBotState(initialBotState);
-          },
-        },
-      });
+
+      if (botTimeoutRef.current) {
+        clearTimeout(botTimeoutRef.current);
+      }
+      botTimeoutRef.current = setTimeout(() => {
+        setWinLine(null);
+        setStatus({ text: "Ваш ход", blink: false });
+        setGame((prev) => ({
+          ...prev,
+          board: Array(9).fill(null),
+          turn: playerMark,
+          roundNumber: (Number(prev.roundNumber ?? 1) || 1) + 1,
+        }));
+        setNavMode("resign");
+        setBotState((prev) => ({ ...prev, playerMoves: [] }));
+        botTimeoutRef.current = null;
+      }, 900);
     },
-    [botState.botMark, botState.playerMark, finishComputerMatch, hideModal, toLobby],
+    [botState.botMark, botState.playerMark, finishComputerMatch],
   );
 
   const finishComputerGame = useCallback(
