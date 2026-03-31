@@ -23,6 +23,24 @@ export function Board({
   lobbyInviteCode = "",
   onInviteCodeClick,
 }) {
+  const renderRoundSquares = (wins, mark) => {
+    const safeWins = Math.max(0, Number(wins ?? 0));
+    const squaresCount = Math.max(1, Number(targetWins ?? 3));
+    return (
+      <div className="round-track" aria-label={`Победы раундов: ${safeWins} из ${squaresCount}`}>
+        {Array.from({ length: squaresCount }, (_, index) => {
+          const isFilled = index < safeWins;
+          return (
+            <span
+              key={`${mark}-${index}`}
+              className={`round-square ${isFilled ? `filled ${mark?.toLowerCase?.()}` : ""}`.trim()}
+            />
+          );
+        })}
+      </div>
+    );
+  };
+
   const myName = me?.name?.trim() ? me.name : "Вы";
   const myUsername = me?.username?.trim() ? `@${me.username.replace(/^@/, "")}` : "";
   const myAvatar = me?.avatar || "/img/logo.svg";
@@ -90,9 +108,7 @@ export function Board({
                     </span>
                   </div>
                 </div>
-                <span className={`mark ${game?.you === "X" ? "x" : "o"}`} id="youMark">
-                  {youMark}
-                </span>
+                {renderRoundSquares(mySeriesWins, youMark)}
               </div>
 
               <div className="badge" id="oppBadge">
@@ -111,9 +127,7 @@ export function Board({
                     </span>
                   </div>
                 </div>
-                <span className={`mark ${game?.you === "X" ? "o" : "x"}`} id="oppMark">
-                  {oppMark}
-                </span>
+                {renderRoundSquares(oppSeriesWins, oppMark)}
               </div>
             </div>
 
@@ -121,7 +135,7 @@ export function Board({
               {statusText?.text || "Готово"}
             </div>
             <div className="status-line" id="seriesScore">
-              Раунд {roundNumber} · Серия {mySeriesWins}:{oppSeriesWins} (до {targetWins})
+              Раунд {roundNumber}
             </div>
 
             {boardContent ? (
