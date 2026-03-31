@@ -23,24 +23,6 @@ export function Board({
   lobbyInviteCode = "",
   onInviteCodeClick,
 }) {
-  const renderRoundSquares = (wins, mark) => {
-    const safeWins = Math.max(0, Number(wins ?? 0));
-    const squaresCount = Math.max(1, Number(targetWins ?? 3));
-    return (
-      <div className="round-track" aria-label={`Победы раундов: ${safeWins} из ${squaresCount}`}>
-        {Array.from({ length: squaresCount }, (_, index) => {
-          const isFilled = index < safeWins;
-          return (
-            <span
-              key={`${mark}-${index}`}
-              className={`round-square ${isFilled ? `filled ${mark?.toLowerCase?.()}` : ""}`.trim()}
-            />
-          );
-        })}
-      </div>
-    );
-  };
-
   const myName = me?.name?.trim() ? me.name : "Вы";
   const myUsername = me?.username?.trim() ? `@${me.username.replace(/^@/, "")}` : "";
   const myAvatar = me?.avatar || "/img/logo.svg";
@@ -62,6 +44,26 @@ export function Board({
   const roundNumber = Number(game?.roundNumber ?? 1);
   const mySeriesWins = game?.you === "X" ? roundWinsX : roundWinsO;
   const oppSeriesWins = game?.you === "X" ? roundWinsO : roundWinsX;
+  const myTurn = Boolean(game?.turn && game?.turn === youMark);
+  const oppTurn = Boolean(game?.turn && game?.turn === oppMark);
+
+  const renderRoundSquares = (wins, mark) => {
+    const safeWins = Math.max(0, Number(wins ?? 0));
+    const squaresCount = Math.max(1, Number(targetWins ?? 3));
+    return (
+      <div className="round-track" aria-label={`Победы раундов: ${safeWins} из ${squaresCount}`}>
+        {Array.from({ length: squaresCount }, (_, index) => {
+          const isFilled = index < safeWins;
+          return (
+            <span
+              key={`${mark}-${index}`}
+              className={`round-square ${isFilled ? `filled ${mark?.toLowerCase?.()}` : ""}`.trim()}
+            />
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <div
@@ -95,8 +97,8 @@ export function Board({
       <div className={`card ${modesLayout ? "card--modes" : "card--game"}`}>
         {!modesLayout ? (
           <>
-            <div className="badges">
-              <div className="badge" id="youBadge">
+            <section className="match-panel" aria-label="Информация о матче">
+              <article className={`badge ${myTurn ? "badge--active" : ""}`.trim()} id="youBadge">
                 <div className="info">
                   <img className="ava" id="youAva" src={myAvatar} alt={myName} />
                   <div className="text">
@@ -108,10 +110,27 @@ export function Board({
                     </span>
                   </div>
                 </div>
-                {renderRoundSquares(mySeriesWins, youMark)}
-              </div>
+                <div className="badge-meta">
+                  <span className={`mark ${String(youMark).toLowerCase()}`}>{youMark}</span>
+                  {renderRoundSquares(mySeriesWins, youMark)}
+                </div>
+              </article>
 
-              <div className="badge" id="oppBadge">
+              <article className="match-status-panel">
+                <div className={`status-line match-status ${statusText?.blink ? "blink" : ""}`} id="status">
+                  {statusText?.text || "Готово"}
+                </div>
+                <div className="status-line match-round" id="seriesScore">
+                  Раунд {roundNumber}
+                </div>
+                <div className="match-score" aria-label="Счет по раундам">
+                  <span>{mySeriesWins}</span>
+                  <span className="match-score__divider">:</span>
+                  <span>{oppSeriesWins}</span>
+                </div>
+              </article>
+
+              <article className={`badge ${oppTurn ? "badge--active" : ""}`.trim()} id="oppBadge">
                 <div className="info">
                   <img className="ava" id="oppAva" src={oppAvatar} alt={oppLabel} />
                   <div className="text">
@@ -127,41 +146,39 @@ export function Board({
                     </span>
                   </div>
                 </div>
-                {renderRoundSquares(oppSeriesWins, oppMark)}
-              </div>
-            </div>
+                <div className="badge-meta">
+                  <span className={`mark ${String(oppMark).toLowerCase()}`}>{oppMark}</span>
+                  {renderRoundSquares(oppSeriesWins, oppMark)}
+                </div>
+              </article>
+            </section>
 
-            <div className={`status-line ${statusText?.blink ? "blink" : ""}`} id="status">
-              {statusText?.text || "Готово"}
-            </div>
-            <div className="status-line" id="seriesScore">
-              Раунд {roundNumber}
-            </div>
+            <section className="game-main" aria-label="Игровое поле">
+              {boardContent ? (
+                <div className="board-slot">{boardContent}</div>
+              ) : (
+                <div className="board" id="board">
+                  {game?.board?.map((value, index) => {
+                    const isWin = Array.isArray(winLine) && winLine.includes(index);
+                    const isDisabled = Boolean(value) || !game?.myMoveAllowed;
 
-            {boardContent ? (
-              <div className="board-slot">{boardContent}</div>
-            ) : (
-              <div className="board" id="board">
-                {game?.board?.map((value, index) => {
-                  const isWin = Array.isArray(winLine) && winLine.includes(index);
-                  const isDisabled = Boolean(value) || !game?.myMoveAllowed;
-
-                  return (
-                    <button
-                      key={index}
-                      type="button"
-                      className={`cell${value ? ` ${value.toLowerCase()}` : ""}${isWin ? " win" : ""}${
-                        isDisabled ? " disabled" : ""
-                      }`}
-                      data-i={index}
-                      onClick={() => onCellClick(index)}
-                    >
-                      {value || ""}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+                    return (
+                      <button
+                        key={index}
+                        type="button"
+                        className={`cell${value ? ` ${value.toLowerCase()}` : ""}${isWin ? " win" : ""}${
+                          isDisabled ? " disabled" : ""
+                        }`}
+                        data-i={index}
+                        onClick={() => onCellClick(index)}
+                      >
+                        {value || ""}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
           </>
         ) : (
           <div className="board-slot board-slot--modes">{boardContent}</div>

@@ -361,7 +361,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 .wrap--modes {
   flex: 1;
@@ -370,6 +370,7 @@ body {
 }
 .wrap--game {
   justify-content: flex-start;
+  gap: 8px;
 }
 .wrap--view-enter {
   animation: viewFadeIn var(--anim-base) var(--anim-ease);
@@ -401,10 +402,11 @@ body {
   flex: 1;
   min-height: 0;
   height: 100%;
-  display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr);
-  justify-items: center;
-  align-content: start;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  overflow: hidden;
 }
 .card--modes {
   flex: 1;
@@ -426,24 +428,38 @@ body {
   display: flex;
 }
 
-.badges {
+.match-panel {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr) minmax(132px, 0.8fr) minmax(0, 1fr);
   gap: 10px;
-  align-items: stretch;
+  align-items: center;
   width: 100%;
+  flex-shrink: 0;
 }
 .badge {
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px;
+  background: linear-gradient(150deg, rgba(15, 23, 42, 0.92), rgba(8, 13, 24, 0.95));
+  border: 1px solid rgba(58, 72, 93, 0.9);
+  border-radius: 14px;
+  min-width: 0;
+  min-height: 84px;
+  transition: border-color var(--anim-base) var(--anim-ease), box-shadow var(--anim-base) var(--anim-ease);
+}
+.badge--active {
+  border-color: rgba(59, 130, 246, 0.9);
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25), 0 10px 22px rgba(37, 99, 235, 0.22);
+}
+.badge-meta {
+  width: 100%;
+  display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 8px 10px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  min-width: 0;
-  flex: 1 1 160px;
+  gap: 8px;
 }
 .round-track {
   display: inline-flex;
@@ -475,8 +491,8 @@ body {
   min-width: 0;
 }
 .badge .ava {
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   object-fit: cover;
   border: 1px solid var(--line);
@@ -495,14 +511,14 @@ body {
   color: var(--text);
   opacity: 1;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
 }
 .badge .username {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 10px;
   opacity: 0.85;
 }
 #oppBadge {
@@ -548,9 +564,22 @@ body {
   text-shadow: 0 0 10px rgba(244, 114, 182, 0.35);
 }
 
+.match-status-panel {
+  min-height: 84px;
+  border-radius: 14px;
+  border: 1px solid rgba(69, 85, 110, 0.75);
+  background: linear-gradient(180deg, rgba(13, 22, 38, 0.94), rgba(10, 17, 30, 0.95));
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 10px;
+}
+
 /* ====== СТРОКА СТАТУСА ====== */
 .status-line {
-  margin: 6px 0 4px;
+  margin: 0;
   text-align: center;
   font-weight: 600;
   color: var(--text);
@@ -560,6 +589,30 @@ body {
     opacity var(--anim-fast) var(--anim-ease),
     color var(--anim-base) var(--anim-ease),
     transform var(--anim-base) var(--anim-ease);
+}
+.match-status {
+  font-size: 14px;
+  font-weight: 700;
+}
+.match-round {
+  font-size: 12px;
+  color: var(--muted);
+}
+.match-score {
+  margin-top: 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(59, 130, 246, 0.45);
+  background: rgba(59, 130, 246, 0.12);
+  font-size: 12px;
+  font-weight: 700;
+  color: #dbeafe;
+}
+.match-score__divider {
+  opacity: 0.7;
 }
 .blink {
   animation: blink 1s linear infinite;
@@ -572,13 +625,13 @@ body {
 
 /* ====== ДОСКА 3×3 ====== */
 .board {
-  width: min(100%, 430px);
+  width: min(100%, 470px);
   aspect-ratio: 1/1;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: clamp(6px, 1.2vmin, 10px);
   margin: 0 auto;
-  max-height: min(100%, 430px);
+  max-height: min(100%, 470px);
   transition:
     transform var(--anim-base) var(--anim-ease),
     opacity var(--anim-fast) var(--anim-ease),
@@ -588,7 +641,14 @@ body {
   min-height: 0;
   max-height: 100%;
   align-self: center;
-  padding-bottom: 20px;
+}
+.game-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 2px 4px;
 }
 .cell {
   aspect-ratio: 1/1;
@@ -1279,6 +1339,14 @@ body {
   .card {
     padding: 12px 12px 14px;
   }
+  .card--game {
+    padding: 10px;
+    gap: 8px;
+  }
+  .match-panel {
+    grid-template-columns: minmax(0, 1fr) minmax(120px, 0.72fr) minmax(0, 1fr);
+    gap: 8px;
+  }
   .board {
     gap: 8px;
   }
@@ -1303,11 +1371,12 @@ body {
   :root {
     --navbar-height: 76px;
   }
-  .badges {
+  .match-panel {
     grid-template-columns: 1fr;
+    gap: 6px;
   }
   .badge {
-    flex: 1 1 100%;
+    min-height: 74px;
   }
   .badge .name {
     max-width: 100%;
@@ -1323,6 +1392,10 @@ body {
     align-items: flex-start;
     text-align: left;
   }
+  .match-status-panel {
+    order: -1;
+    min-height: 72px;
+  }
   .navbar {
     gap: 10px;
   }
@@ -1337,6 +1410,10 @@ body {
   }
   .card {
     padding: 10px 10px 12px;
+  }
+  .card--game {
+    gap: 7px;
+    padding: 9px;
   }
   .wrap {
     gap: 6px;
@@ -1363,10 +1440,8 @@ body {
     padding: 4px 10px;
   }
   .badge {
-    padding: 7px 8px;
-  }
-  .status-line {
-    margin: 4px 0 2px;
+    padding: 8px;
+    min-height: 70px;
   }
   .mark {
     padding: 2px 8px;
@@ -1388,7 +1463,7 @@ body {
   .card {
     padding: 8px 8px 10px;
   }
-  .badges {
+  .match-panel {
     gap: 6px;
   }
   .badge .ava {
@@ -1405,7 +1480,7 @@ body {
     width: min(
       100%,
       320px,
-      calc(var(--tg-viewport-height) - var(--navbar-height) - 230px)
+      calc(var(--tg-viewport-height) - var(--navbar-height) - 190px)
     );
     gap: 5px;
   }
@@ -1419,17 +1494,17 @@ body {
     display: none;
   }
   .card--game {
-    grid-template-rows: auto minmax(0, 1fr);
+    gap: 6px;
   }
-  .status-line {
-    font-size: 12px;
-    margin: 0 0 4px;
+  .match-panel {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
   }
   .board {
     width: min(
       100%,
       300px,
-      calc(var(--tg-viewport-height) - var(--navbar-height) - 150px)
+      calc(var(--tg-viewport-height) - var(--navbar-height) - 130px)
     );
   }
 }
