@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const SWIPE_THRESHOLD = 35;
 const WHEEL_THRESHOLD = 45;
@@ -7,16 +7,32 @@ export function GameModesCarousel({ items, activeIndex, onChange }) {
   const pointerStateRef = useRef({ id: null, startX: 0, dragging: false });
   const wheelCarryRef = useRef(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [visualIndex, setVisualIndex] = useState(activeIndex + 1);
+  const [isTransitionEnabled, setIsTransitionEnabled] = useState(true);
 
   const itemCount = Array.isArray(items) ? items.length : 0;
+  const normalizedVisualIndex = ((visualIndex - 1 + itemCount) % itemCount + itemCount) % itemCount;
+  const renderItems = useMemo(() => {
+    if (!itemCount) return [];
+    const first = items[0];
+    const last = items[itemCount - 1];
+    return [last, ...items, first];
+  }, [itemCount, items]);
+
+  useEffect(() => {
+    if (!itemCount) return;
+    const nextVisual = activeIndex + 1;
+    setIsTransitionEnabled(true);
+    setVisualIndex(nextVisual);
+  }, [activeIndex, itemCount]);
 
   const move = useCallback(
     (delta) => {
       if (itemCount <= 0 || typeof onChange !== "function") return;
-      const next = (activeIndex + delta + itemCount) % itemCount;
-      onChange(next);
+      setIsTransitionEnabled(true);
+      setVisualIndex((current) => current + delta);
     },
-    [activeIndex, itemCount, onChange]
+    [itemCount, onChange]
   );
 
   const onPointerDown = useCallback((event) => {
@@ -65,6 +81,26 @@ export function GameModesCarousel({ items, activeIndex, onChange }) {
     [move]
   );
 
+  const handleTrackTransitionEnd = useCallback(() => {
+    if (!itemCount) return;
+
+    if (visualIndex === 0) {
+      setIsTransitionEnabled(false);
+      setVisualIndex(itemCount);
+      return;
+    }
+
+    if (visualIndex === itemCount + 1) {
+      setIsTransitionEnabled(false);
+      setVisualIndex(1);
+      return;
+    }
+
+    if (typeof onChange === "function" && normalizedVisualIndex !== activeIndex) {
+      onChange(normalizedVisualIndex);
+    }
+  }, [activeIndex, itemCount, normalizedVisualIndex, onChange, visualIndex]);
+
   if (!itemCount) return null;
 
   return (
@@ -77,12 +113,20 @@ export function GameModesCarousel({ items, activeIndex, onChange }) {
         onPointerCancel={clearPointer}
         onWheel={onWheel}
       >
-        <div className="modes-carousel__track" style={{ transform: `translateX(-${activeIndex * 100}%)` }}>
-          {items.map((item, index) => {
+        <div
+          className="modes-carousel__track"
+          style={{
+            transform: `translateX(-${visualIndex * 100}%)`,
+            transition: isTransitionEnabled ? undefined : "none",
+          }}
+          onTransitionEnd={handleTrackTransitionEnd}
+        >
+          {renderItems.map((item, visualItemIndex) => {
+            const index = ((visualItemIndex - 1 + itemCount) % itemCount + itemCount) % itemCount;
             const isActive = index === activeIndex;
             return (
               <article
-                key={item.id}
+                key={`${item.id}-${visualItemIndex}`}
                 className={`mode-card ${isActive ? "mode-card--active" : "mode-card--inactive"}`}
                 onClick={() => {
                   if (!isActive) {
@@ -128,7 +172,7 @@ export function GameModesCarousel({ items, activeIndex, onChange }) {
       </div>
       <div className="modes-carousel__dots" aria-hidden="true">
         {items.map((item, index) => {
-          const active = index === activeIndex;
+          const active = index === normalizedVisualIndex;
           return (
             <button
               key={`dot-${item.id}`}
