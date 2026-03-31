@@ -429,10 +429,9 @@ body {
 }
 .badge {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   padding: 10px;
   background: linear-gradient(150deg, rgba(15, 23, 42, 0.92), rgba(8, 13, 24, 0.95));
   border: 1px solid rgba(58, 72, 93, 0.9);
@@ -446,11 +445,11 @@ body {
   box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25), 0 10px 22px rgba(37, 99, 235, 0.22);
 }
 .badge-meta {
-  width: 100%;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 8px;
+  flex-shrink: 0;
 }
 .round-track {
   display: inline-flex;
@@ -483,8 +482,9 @@ body {
 .badge .info {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   min-width: 0;
+  flex: 1;
 }
 .badge .ava {
   width: 30px;
@@ -499,6 +499,7 @@ body {
   flex-direction: column;
   gap: 1px;
   min-width: 0;
+  overflow: hidden;
 }
 .badge .name {
   white-space: nowrap;
@@ -517,16 +518,19 @@ body {
   font-size: 10px;
   opacity: 0.85;
 }
-#oppBadge {
+.badge--opponent {
   flex-direction: row-reverse;
   text-align: right;
 }
-#oppBadge .info {
+.badge--opponent .info {
   flex-direction: row-reverse;
 }
-#oppBadge .text {
+.badge--opponent .text {
   align-items: flex-end;
   text-align: right;
+}
+.badge--opponent .badge-meta {
+  justify-content: flex-start;
 }
 /* ярче маркеры X/O */
 .mark {
