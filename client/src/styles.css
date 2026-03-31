@@ -499,6 +499,7 @@ body {
   flex-direction: column;
   gap: 1px;
   min-width: 0;
+  overflow: hidden;
 }
 .badge .name {
   white-space: nowrap;
@@ -517,16 +518,18 @@ body {
   font-size: 10px;
   opacity: 0.85;
 }
-#oppBadge {
-  flex-direction: row-reverse;
+.badge--opponent {
   text-align: right;
 }
-#oppBadge .info {
+.badge--opponent .info {
   flex-direction: row-reverse;
 }
-#oppBadge .text {
+.badge--opponent .text {
   align-items: flex-end;
   text-align: right;
+}
+.badge--opponent .badge-meta {
+  flex-direction: row-reverse;
 }
 /* ярче маркеры X/O */
 .mark {

@@ -8,6 +8,23 @@ function buildUserLabel(user) {
   return "Player";
 }
 
+function buildGuestUsername(id, fallback = "guest") {
+  const safeId = String(id ?? "")
+    .replace(/[^a-zA-Z0-9_-]/g, "")
+    .slice(-8);
+  return `@${safeId ? `guest_${safeId}` : fallback}`;
+}
+
+function buildUserView(user, fallbackName, fallbackAvatar = "/img/logo.svg") {
+  const cleanName = user?.name?.trim();
+  const cleanUsername = user?.username?.trim().replace(/^@/, "");
+  const username = cleanUsername ? `@${cleanUsername}` : buildGuestUsername(user?.id);
+  const name = cleanName || `@${cleanUsername}` || fallbackName;
+  const avatar = user?.avatar || fallbackAvatar;
+
+  return { name, username, avatar };
+}
+
 export function Board({
   me,
   game,
@@ -23,16 +40,12 @@ export function Board({
   lobbyInviteCode = "",
   onInviteCodeClick,
 }) {
-  const myName = me?.name?.trim() ? me.name : "Вы";
-  const myUsername = me?.username?.trim() ? `@${me.username.replace(/^@/, "")}` : "";
-  const myAvatar = me?.avatar || "/img/logo.svg";
+  const myView = buildUserView(me, "Вы");
 
   const hasOpp = game?.opp && String(game?.opp?.id) !== String(me?.id);
-  const oppNameRaw = hasOpp ? game.opp.name : null;
-  const oppUsernameRaw = hasOpp ? game.opp.username : null;
-  const oppUsername = oppUsernameRaw?.trim() ? `@${oppUsernameRaw.replace(/^@/, "")}` : "";
-  const oppLabel = oppNameRaw?.trim() || oppUsername || "Оппонент";
-  const oppAvatar = hasOpp ? game.opp.avatar || "/img/logo.svg" : "/img/logo.svg";
+  const oppView = hasOpp
+    ? buildUserView(game.opp, "Оппонент")
+    : { name: "Оппонент", username: "@guest", avatar: "/img/logo.svg" };
 
   const youMark = game?.you || "—";
   const oppMark = game?.you ? (game.you === "X" ? "O" : "X") : "—";
@@ -100,13 +113,13 @@ export function Board({
             <section className="match-panel" aria-label="Информация о матче">
               <article className={`badge ${myTurn ? "badge--active" : ""}`.trim()} id="youBadge">
                 <div className="info">
-                  <img className="ava" id="youAva" src={myAvatar} alt={myName} />
+                  <img className="ava" id="youAva" src={myView.avatar} alt={myView.name} />
                   <div className="text">
                     <span className="name" id="youName" title={buildUserLabel(me)}>
-                      {myName}
+                      {myView.name}
                     </span>
-                    <span className="username" id="youUsername" style={{ display: myUsername ? "block" : "none" }}>
-                      {myUsername}
+                    <span className="username" id="youUsername">
+                      {myView.username}
                     </span>
                   </div>
                 </div>
@@ -130,19 +143,18 @@ export function Board({
                 </div>
               </article>
 
-              <article className={`badge ${oppTurn ? "badge--active" : ""}`.trim()} id="oppBadge">
+              <article
+                className={`badge badge--opponent ${oppTurn ? "badge--active" : ""}`.trim()}
+                id="oppBadge"
+              >
                 <div className="info">
-                  <img className="ava" id="oppAva" src={oppAvatar} alt={oppLabel} />
+                  <img className="ava" id="oppAva" src={oppView.avatar} alt={oppView.name} />
                   <div className="text">
-                    <span className="name" id="oppName" title={oppLabel}>
-                      {oppLabel}
+                    <span className="name" id="oppName" title={oppView.name}>
+                      {oppView.name}
                     </span>
-                    <span
-                      className="username"
-                      id="oppUsername"
-                      style={{ display: oppUsername ? "block" : "none" }}
-                    >
-                      {oppUsername}
+                    <span className="username" id="oppUsername">
+                      {oppView.username}
                     </span>
                   </div>
                 </div>
