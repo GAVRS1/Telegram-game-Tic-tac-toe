@@ -303,7 +303,6 @@ export default function App() {
   const [game, setGame] = useState(initialGameState);
   const [status, setStatus] = useState({ text: "Готово", blink: false });
   const [screen, setScreen] = useState("modes");
-  const [isViewEntering, setIsViewEntering] = useState(true);
   const [activeModeIndex, setActiveModeIndex] = useState(0);
   const [friendInviteInputVisible, setFriendInviteInputVisible] =
     useState(false);
@@ -356,14 +355,6 @@ export default function App() {
   useEffect(() => {
     gameRef.current = game;
   }, [game]);
-
-  useEffect(() => {
-    setIsViewEntering(true);
-    const timer = window.setTimeout(() => {
-      setIsViewEntering(false);
-    }, 260);
-    return () => window.clearTimeout(timer);
-  }, [screen]);
 
   useEffect(() => {
     if (pendingInviteCode) return;
@@ -2096,7 +2087,6 @@ export default function App() {
       title: "Играть онлайн",
       description: "Быстрый матч через общую очередь игроков.",
       onSelect: handlePlayOnline,
-      renderExtra: () => null,
     },
     {
       id: "friends",
@@ -2163,7 +2153,7 @@ export default function App() {
   const isLobbyScreen = !shouldShowBoard;
   const navModeForDisplay =
     shouldShowBoard && game.gameId && navMode !== "rematch" ? "resign" : navMode;
-  const viewTransitionClass = `wrap--view-${shouldShowBoard ? "game" : "modes"}${isViewEntering ? " wrap--view-enter" : ""}`;
+  const viewTransitionClass = `wrap--view-${shouldShowBoard ? "game" : "modes"}`;
 
   return (
     <div id="app">

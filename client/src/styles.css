@@ -372,15 +372,6 @@ body {
   justify-content: flex-start;
   gap: 8px;
 }
-.wrap--view-enter {
-  animation: viewFadeIn var(--anim-base) var(--anim-ease);
-}
-.wrap--view-game.wrap--view-enter {
-  animation-name: viewFadeInGame;
-}
-.wrap--view-modes.wrap--view-enter {
-  animation-name: viewFadeInModes;
-}
 .card {
   width: 100%;
   background: var(--card);
@@ -1513,9 +1504,6 @@ body {
   :root {
     --anim-fast: 1ms;
     --anim-base: 1ms;
-  }
-  .wrap--view-enter {
-    animation: none;
   }
   .mode-card,
   .card,
