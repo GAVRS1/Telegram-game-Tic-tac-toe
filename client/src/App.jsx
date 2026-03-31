@@ -334,6 +334,7 @@ export default function App() {
   const wsConnectedRef = useRef(false);
   const lastHelloFingerprintRef = useRef("");
   const pendingOppProfiles = useRef(new Set());
+  const lastMatchEndEventRef = useRef("");
   const pendingInviteShareModeRef = useRef("link");
   const statsSystemRef = useRef(null);
   const mountedRef = useRef(true);
@@ -1601,6 +1602,7 @@ export default function App() {
         });
 
         setWinLine(null);
+        lastMatchEndEventRef.current = "";
         hideModal();
         const myMoveAllowed = msg.you && msg.turn && msg.you === msg.turn;
         setStatus({
@@ -1766,7 +1768,12 @@ export default function App() {
         return;
       }
 
-      if (msg.t === "game.match_end") {
+      const isMatchEndMessage = msg.t === "game.match_end" || msg.t === "game.end";
+      if (isMatchEndMessage) {
+        const eventKey = `${gameRef.current.gameId || ""}:${msg.reason || ""}:${msg.by || ""}`;
+        if (lastMatchEndEventRef.current === eventKey) return;
+        lastMatchEndEventRef.current = eventKey;
+
         const winnerMark = typeof msg.by === "string" ? msg.by : null;
         const youWon = winnerMark && winnerMark === gameRef.current.you;
         const youLost = winnerMark && winnerMark !== gameRef.current.you;
@@ -1802,7 +1809,7 @@ export default function App() {
           title,
           content: buildResultContent(mainText, phrases),
           primary: {
-            label: "Реванш",
+            label: "Реванш / Сыграть снова",
             onClick: () => {
               hideModal();
               inviteLastOpponent();
@@ -1818,12 +1825,6 @@ export default function App() {
         });
 
         setStatus({ text: statusText, blink: false });
-        return;
-      }
-
-      if (msg.t === "game.end") {
-        // Legacy fallback event from server. Modern clients process "game.match_end",
-        // so we skip duplicate handling to avoid repeated modals/state glitches.
         return;
       }
 
