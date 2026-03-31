@@ -806,31 +806,30 @@ export default function App() {
         cancelQueueSearch();
       }
       if (mode === "resign") {
-        if (localBotActive) {
-          finishComputerGame("lose", gameRef.current.board);
-          return;
-        }
-        if (gameRef.current.gameId) {
-          setModal({
-            title: "Сдаться?",
-            content: "Вы уверены, что хотите сдаться?",
-            primary: {
-              label: "Сдаться",
-              onClick: () => {
+        if (!gameRef.current.gameId) return;
+        setModal({
+          title: "Сдаться?",
+          content: "Вы уверены, что хотите сдаться? Это завершит всю серию.",
+          primary: {
+            label: "Сдаться",
+            onClick: () => {
+              if (localBotActive) {
+                finishComputerMatch("lose", gameRef.current.board);
+              } else {
                 sendWs({ t: "game.resign", gameId: gameRef.current.gameId });
-                hideModal();
-                audioManager.playClick();
-              },
+              }
+              hideModal();
+              audioManager.playClick();
             },
-            secondary: {
-              label: "Отмена",
-              onClick: () => {
-                hideModal();
-                audioManager.playClick();
-              },
+          },
+          secondary: {
+            label: "Отмена",
+            onClick: () => {
+              hideModal();
+              audioManager.playClick();
             },
-          });
-        }
+          },
+        });
       }
       if (mode === "rematch") {
         if (localBotActive) {
@@ -844,6 +843,7 @@ export default function App() {
       botState.active,
       cancelQueueSearch,
       finishComputerGame,
+      finishComputerMatch,
       hideModal,
       inviteLastOpponent,
       sendWs,
@@ -2161,6 +2161,8 @@ export default function App() {
 
   const shouldShowBoard = Boolean(game.gameId || screen === "game");
   const isLobbyScreen = !shouldShowBoard;
+  const navModeForDisplay =
+    shouldShowBoard && game.gameId && navMode !== "rematch" ? "resign" : navMode;
   const viewTransitionClass = `wrap--view-${shouldShowBoard ? "game" : "modes"}${isViewEntering ? " wrap--view-enter" : ""}`;
 
   return (
@@ -2214,7 +2216,7 @@ export default function App() {
         />
       )}
       <Nav
-        mode={navMode}
+        mode={navModeForDisplay}
         onAction={onNavAction}
         onRating={loadRating}
         onProfile={loadProfile}
