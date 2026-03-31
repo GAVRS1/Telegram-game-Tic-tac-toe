@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 const SWIPE_THRESHOLD = 24;
 const WHEEL_THRESHOLD = 30;
+const INTERACTIVE_SELECTOR = "button, input, textarea, select, a, label";
 
 export function GameModesCarousel({ items, activeIndex, onChange }) {
   const pointerStateRef = useRef({ id: null, startX: 0, dragging: false });
@@ -42,7 +43,14 @@ export function GameModesCarousel({ items, activeIndex, onChange }) {
     [itemCount, onChange]
   );
 
+  const isInteractiveTarget = useCallback((target) => {
+    if (!(target instanceof Element)) return false;
+    return Boolean(target.closest(INTERACTIVE_SELECTOR));
+  }, []);
+
   const onPointerDown = useCallback((event) => {
+    if (isInteractiveTarget(event.target)) return;
+    if (event.pointerType === "mouse" && event.button !== 0) return;
     event.currentTarget.setPointerCapture?.(event.pointerId);
     pointerStateRef.current = {
       id: event.pointerId,
@@ -50,7 +58,7 @@ export function GameModesCarousel({ items, activeIndex, onChange }) {
       dragging: true,
     };
     setIsDragging(true);
-  }, []);
+  }, [isInteractiveTarget]);
 
   const onPointerMove = useCallback(
     (event) => {
@@ -149,22 +157,6 @@ export function GameModesCarousel({ items, activeIndex, onChange }) {
               <article
                 key={`${item.id}-${visualItemIndex}`}
                 className={`mode-card ${isActive ? "mode-card--active" : "mode-card--inactive"}`}
-                onClick={() => {
-                  if (!isActive) {
-                    onChange(index);
-                    return;
-                  }
-                  item.onSelect?.();
-                }}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    if (!isActive) onChange(index);
-                    else item.onSelect?.();
-                  }
-                }}
               >
                 <div
                   className={`mode-card__media ${item.mediaClassName || ""}`.trim()}
