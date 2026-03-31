@@ -588,6 +588,7 @@ body {
   min-height: 0;
   max-height: 100%;
   align-self: center;
+  padding-bottom: 20px;
 }
 .cell {
   aspect-ratio: 1/1;
