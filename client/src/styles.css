@@ -467,6 +467,11 @@ body {
   gap: 5px;
   flex-shrink: 0;
 }
+.round-track--compact .round-square {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+}
 .round-square {
   width: 10px;
   height: 10px;
