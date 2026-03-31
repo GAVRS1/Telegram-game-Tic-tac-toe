@@ -46,16 +46,12 @@ export function Board({
   const oppSeriesWins = game?.you === "X" ? roundWinsO : roundWinsX;
   const myTurn = Boolean(game?.turn && game?.turn === youMark);
   const oppTurn = Boolean(game?.turn && game?.turn === oppMark);
-  const turnAccentClass = game?.turn ? `turn-accent-${String(game.turn).toLowerCase()}` : "";
 
-  const renderRoundSquares = (wins, mark, compact = false) => {
+  const renderRoundSquares = (wins, mark) => {
     const safeWins = Math.max(0, Number(wins ?? 0));
     const squaresCount = Math.max(1, Number(targetWins ?? 3));
     return (
-      <div
-        className={`round-track ${compact ? "round-track--compact" : ""}`.trim()}
-        aria-label={`Победы раундов: ${safeWins} из ${squaresCount}`}
-      >
+      <div className="round-track" aria-label={`Победы раундов: ${safeWins} из ${squaresCount}`}>
         {Array.from({ length: squaresCount }, (_, index) => {
           const isFilled = index < safeWins;
           return (
@@ -102,69 +98,57 @@ export function Board({
         {!modesLayout ? (
           <>
             <section className="match-panel" aria-label="Информация о матче">
-              <div className="match-panel__players">
-                <article
-                  className={`badge ${myTurn ? `badge--active badge--active-${String(youMark).toLowerCase()}` : ""}`.trim()}
-                  id="youBadge"
-                >
-                  <div className="info">
-                    <img className="ava" id="youAva" src={myAvatar} alt={myName} />
-                    <div className="text">
-                      <span className="name" id="youName" title={buildUserLabel(me)}>
-                        {myName}
-                      </span>
-                      <span className="username" id="youUsername" style={{ display: myUsername ? "block" : "none" }}>
-                        {myUsername}
-                      </span>
-                    </div>
+              <article className={`badge ${myTurn ? "badge--active" : ""}`.trim()} id="youBadge">
+                <div className="info">
+                  <img className="ava" id="youAva" src={myAvatar} alt={myName} />
+                  <div className="text">
+                    <span className="name" id="youName" title={buildUserLabel(me)}>
+                      {myName}
+                    </span>
+                    <span className="username" id="youUsername" style={{ display: myUsername ? "block" : "none" }}>
+                      {myUsername}
+                    </span>
                   </div>
-                  <div className="badge-meta">
-                    <span className={`mark ${String(youMark).toLowerCase()}`}>{youMark}</span>
-                  </div>
-                </article>
-
-                <article
-                  className={`badge ${oppTurn ? `badge--active badge--active-${String(oppMark).toLowerCase()}` : ""}`.trim()}
-                  id="oppBadge"
-                >
-                  <div className="info">
-                    <img className="ava" id="oppAva" src={oppAvatar} alt={oppLabel} />
-                    <div className="text">
-                      <span className="name" id="oppName" title={oppLabel}>
-                        {oppLabel}
-                      </span>
-                      <span
-                        className="username"
-                        id="oppUsername"
-                        style={{ display: oppUsername ? "block" : "none" }}
-                      >
-                        {oppUsername}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="badge-meta">
-                    <span className={`mark ${String(oppMark).toLowerCase()}`}>{oppMark}</span>
-                  </div>
-                </article>
-              </div>
-
-              <article className={`match-status-panel ${turnAccentClass}`.trim()}>
-                <div className={`status-line match-status ${statusText?.blink ? "blink" : ""}`} id="status">
-                  {statusText?.text || "Готово"}
+                </div>
+                <div className="badge-meta">
+                  <span className={`mark ${String(youMark).toLowerCase()}`}>{youMark}</span>
+                  {renderRoundSquares(mySeriesWins, youMark)}
                 </div>
               </article>
 
-              <article className={`match-series-panel ${turnAccentClass}`.trim()}>
+              <article className="match-status-panel">
+                <div className={`status-line match-status ${statusText?.blink ? "blink" : ""}`} id="status">
+                  {statusText?.text || "Готово"}
+                </div>
                 <div className="status-line match-round" id="seriesScore">
                   Раунд {roundNumber}
                 </div>
-                <div className="match-series-track" aria-label="Счет по раундам">
-                  <span className={`mark mark--mini ${String(youMark).toLowerCase()}`}>{youMark}</span>
-                  {renderRoundSquares(mySeriesWins, youMark, true)}
+                <div className="match-score" aria-label="Счет по раундам">
+                  <span>{mySeriesWins}</span>
+                  <span className="match-score__divider">:</span>
+                  <span>{oppSeriesWins}</span>
                 </div>
-                <div className="match-series-track" aria-label="Счет по раундам соперника">
-                  <span className={`mark mark--mini ${String(oppMark).toLowerCase()}`}>{oppMark}</span>
-                  {renderRoundSquares(oppSeriesWins, oppMark, true)}
+              </article>
+
+              <article className={`badge ${oppTurn ? "badge--active" : ""}`.trim()} id="oppBadge">
+                <div className="info">
+                  <img className="ava" id="oppAva" src={oppAvatar} alt={oppLabel} />
+                  <div className="text">
+                    <span className="name" id="oppName" title={oppLabel}>
+                      {oppLabel}
+                    </span>
+                    <span
+                      className="username"
+                      id="oppUsername"
+                      style={{ display: oppUsername ? "block" : "none" }}
+                    >
+                      {oppUsername}
+                    </span>
+                  </div>
+                </div>
+                <div className="badge-meta">
+                  <span className={`mark ${String(oppMark).toLowerCase()}`}>{oppMark}</span>
+                  {renderRoundSquares(oppSeriesWins, oppMark)}
                 </div>
               </article>
             </section>
