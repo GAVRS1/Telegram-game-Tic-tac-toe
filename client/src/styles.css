@@ -421,7 +421,7 @@ body {
 
 .match-panel {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(132px, 0.8fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(148px, 0.85fr) minmax(0, 1fr);
   gap: 10px;
   align-items: center;
   width: 100%;
@@ -561,6 +561,7 @@ body {
 }
 
 .match-status-panel {
+  min-width: 0;
   min-height: 84px;
   border-radius: 14px;
   border: 1px solid rgba(69, 85, 110, 0.75);
@@ -576,11 +577,14 @@ body {
 /* ====== СТРОКА СТАТУСА ====== */
 .status-line {
   margin: 0;
+  width: 100%;
+  max-width: 100%;
   text-align: center;
   font-weight: 600;
   color: var(--text);
   opacity: 0.95;
   font-size: 14px;
+  overflow-wrap: anywhere;
   transition:
     opacity var(--anim-fast) var(--anim-ease),
     color var(--anim-base) var(--anim-ease),
@@ -1340,7 +1344,7 @@ body {
     gap: 8px;
   }
   .match-panel {
-    grid-template-columns: minmax(0, 1fr) minmax(120px, 0.72fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(132px, 0.78fr) minmax(0, 1fr);
     gap: 8px;
   }
   .board {
