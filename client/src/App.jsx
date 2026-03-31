@@ -628,11 +628,11 @@ export default function App() {
       roundWinsX: 0,
       roundWinsO: 0,
       roundNumber: 1,
-      matchTargetWins: 1,
+      matchTargetWins: 3,
     }));
   }, []);
 
-  const finishComputerGame = useCallback(
+  const finishComputerMatch = useCallback(
     (result, board, line = null) => {
       setWinLine(line);
       setNavMode("find");
@@ -643,16 +643,16 @@ export default function App() {
       let statusText = "Ничья";
 
       if (result === "win") {
-        title = "Победа 🎉";
-        text = "Вы обыграли компьютер.";
+        title = "Победа в серии 🎉";
+        text = "Вы выиграли серию у компьютера.";
         phrasePool = WIN_PHRASES;
-        statusText = "Победа!";
+        statusText = "Победа в серии!";
         audioManager.playWin();
       } else if (result === "lose") {
-        title = "Поражение 😔";
-        text = "Компьютер оказался сильнее.";
+        title = "Поражение в серии 😔";
+        text = "Компьютер выиграл серию.";
         phrasePool = LOSE_PHRASES;
-        statusText = "Поражение";
+        statusText = "Поражение в серии";
         audioManager.playLose();
       } else {
         audioManager.playDraw();
@@ -683,7 +683,108 @@ export default function App() {
         setGame((prev) => ({ ...prev, board: board.slice(), turn: null }));
       }
     },
-    [hideModal, setModal, startComputerGame, toLobby],
+    [hideModal, startComputerGame, toLobby],
+  );
+
+  const finishComputerRound = useCallback(
+    (result, board, line = null) => {
+      const currentGame = gameRef.current;
+      const playerMark = botState.playerMark || "X";
+      const botMark = botState.botMark || "O";
+      const targetWins = Number(currentGame?.matchTargetWins ?? 3) || 3;
+      const currentWinsX = Number(currentGame?.roundWinsX ?? 0) || 0;
+      const currentWinsO = Number(currentGame?.roundWinsO ?? 0) || 0;
+      const currentRound = Number(currentGame?.roundNumber ?? 1) || 1;
+
+      const winnerMark =
+        result === "win" ? playerMark : result === "lose" ? botMark : null;
+      const nextWinsX = currentWinsX + (winnerMark === "X" ? 1 : 0);
+      const nextWinsO = currentWinsO + (winnerMark === "O" ? 1 : 0);
+
+      setWinLine(line);
+      setGame((prev) => ({
+        ...prev,
+        board: board ? board.slice() : prev.board,
+        turn: null,
+        roundWinsX: nextWinsX,
+        roundWinsO: nextWinsO,
+      }));
+
+      const playerSeriesWins = playerMark === "X" ? nextWinsX : nextWinsO;
+      const botSeriesWins = botMark === "X" ? nextWinsX : nextWinsO;
+
+      if (playerSeriesWins >= targetWins) {
+        finishComputerMatch("win", board, line);
+        return;
+      }
+      if (botSeriesWins >= targetWins) {
+        finishComputerMatch("lose", board, line);
+        return;
+      }
+
+      let title = "Ничья в раунде 🤝";
+      let text = `Раунд ${currentRound} завершился ничьей.`;
+      let statusText = "Ничья в раунде";
+
+      if (result === "win") {
+        title = "Раунд за вами 🎉";
+        text = `Вы выиграли раунд ${currentRound}.`;
+        statusText = "Раунд выигран!";
+        audioManager.playWin();
+      } else if (result === "lose") {
+        title = "Раунд за компьютером 😔";
+        text = `Компьютер выиграл раунд ${currentRound}.`;
+        statusText = "Раунд проигран";
+        audioManager.playLose();
+      } else {
+        audioManager.playDraw();
+      }
+
+      setStatus({ text: statusText, blink: false });
+      setModal({
+        title,
+        content: (
+          <>
+            <p className="modal-text">{text}</p>
+            <p className="modal-phrase">
+              Счёт серии: {playerSeriesWins}:{botSeriesWins} (до {targetWins})
+            </p>
+          </>
+        ),
+        primary: {
+          label: "Следующий раунд",
+          onClick: () => {
+            hideModal();
+            setWinLine(null);
+            setStatus({ text: "Ваш ход", blink: false });
+            setGame((prev) => ({
+              ...prev,
+              board: Array(9).fill(null),
+              turn: playerMark,
+              roundNumber: (Number(prev.roundNumber ?? 1) || 1) + 1,
+            }));
+            setNavMode("resign");
+            setBotState((prev) => ({ ...prev, playerMoves: [] }));
+          },
+        },
+        secondary: {
+          label: "Выйти",
+          onClick: () => {
+            hideModal();
+            toLobby();
+            setBotState(initialBotState);
+          },
+        },
+      });
+    },
+    [botState.botMark, botState.playerMark, finishComputerMatch, hideModal, toLobby],
+  );
+
+  const finishComputerGame = useCallback(
+    (result, board, line = null) => {
+      finishComputerRound(result, board, line);
+    },
+    [finishComputerRound],
   );
 
   const declineRematch = useCallback(
