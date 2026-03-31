@@ -2117,13 +2117,12 @@ export default function App() {
     {
       id: "online",
       image: "/img/search.svg",
+      imageClassName: navMode === "waiting" ? "mode-card__image--searching" : "",
+      mediaClassName: navMode === "waiting" ? "mode-card__media--searching" : "",
       title: "Играть онлайн",
       description: "Быстрый матч через общую очередь игроков.",
       onSelect: handlePlayOnline,
-      renderExtra: () =>
-        navMode === "waiting" ? (
-          <span className="mode-card__chip">Поиск</span>
-        ) : null,
+      renderExtra: () => null,
     },
     {
       id: "friends",
@@ -2136,15 +2135,8 @@ export default function App() {
           className="mode-card__friend-actions"
           onClick={(event) => event.stopPropagation()}
         >
-          <button
-            type="button"
-            className="mode-card__friend-button"
-            onClick={createFriendsLobby}
-          >
-            Создать
-          </button>
           {friendInviteInputVisible ? (
-            <div className="mode-card__friend-join">
+            <div className="mode-card__friend-join mode-card__friend-join--expanded">
               <input
                 className="mode-card__friend-input"
                 value={friendInviteInput}
@@ -2161,13 +2153,22 @@ export default function App() {
               </button>
             </div>
           ) : (
-            <button
-              type="button"
-              className="mode-card__friend-button mode-card__friend-button--alt"
-              onClick={() => setFriendInviteInputVisible(true)}
-            >
-              Присоединиться
-            </button>
+            <>
+              <button
+                type="button"
+                className="mode-card__friend-button"
+                onClick={createFriendsLobby}
+              >
+                Создать
+              </button>
+              <button
+                type="button"
+                className="mode-card__friend-button mode-card__friend-button--alt"
+                onClick={() => setFriendInviteInputVisible(true)}
+              >
+                Присоединиться
+              </button>
+            </>
           )}
         </div>
       ),

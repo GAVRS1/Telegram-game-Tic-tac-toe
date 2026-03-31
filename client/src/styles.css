@@ -88,6 +88,8 @@ body {
   height: 100%;
   align-items: stretch;
   transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: transform;
+  transform: translateZ(0);
 }
 .modes-carousel.is-dragging {
   cursor: grabbing;
@@ -95,7 +97,7 @@ body {
 .mode-card {
   flex: 0 0 100%;
   margin: 8px auto;
-  width: min(100%, 410px);
+  width: min(100%, 430px);
   min-height: calc(100% - 16px);
   background: linear-gradient(
     145deg,
@@ -153,7 +155,7 @@ body {
 }
 .mode-card__media {
   width: 100%;
-  min-height: 140px;
+  min-height: 180px;
   border-radius: 16px;
   border: 1px dashed rgba(148, 163, 184, 0.45);
   background: radial-gradient(
@@ -167,14 +169,28 @@ body {
   justify-content: center;
 }
 .mode-card__image {
-  width: min(120px, 45%);
-  max-height: 76px;
+  width: min(170px, 62%);
+  max-height: 118px;
   object-fit: contain;
   filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.35));
   transition: transform 0.3s ease;
 }
+.mode-card__media--searching {
+  border-color: rgba(34, 197, 94, 0.45);
+  background: radial-gradient(
+    circle at 15% 15%,
+    rgba(34, 197, 94, 0.25),
+    rgba(15, 23, 42, 0.95)
+  );
+}
+.mode-card__image--searching {
+  animation: searchSpinPulse 1.2s linear infinite;
+}
 .mode-card--active .mode-card__image {
   animation: cardFloat 3s ease-in-out infinite;
+}
+.mode-card--active .mode-card__image--searching {
+  animation: searchSpinPulse 1.2s linear infinite;
 }
 .mode-card__title-row {
   display: flex;
@@ -258,6 +274,19 @@ body {
   grid-column: span 2;
   display: flex;
   gap: 8px;
+  opacity: 0;
+  transform: translateY(8px) scale(0.98);
+  max-height: 0;
+  overflow: hidden;
+  transition:
+    opacity 0.28s var(--anim-ease),
+    transform 0.28s var(--anim-ease),
+    max-height 0.28s var(--anim-ease);
+}
+.mode-card__friend-join--expanded {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  max-height: 80px;
 }
 .mode-card__friend-input {
   flex: 1;
@@ -306,6 +335,18 @@ body {
   }
   50% {
     transform: translateY(-4px);
+  }
+}
+
+@keyframes searchSpinPulse {
+  0% {
+    transform: scale(0.96) rotate(0deg);
+  }
+  50% {
+    transform: scale(1.04) rotate(180deg);
+  }
+  100% {
+    transform: scale(0.96) rotate(360deg);
   }
 }
 
