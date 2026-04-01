@@ -25,6 +25,12 @@ function buildUserView(user, fallbackName, fallbackAvatar = "/img/logo.svg") {
   return { name, username, avatar };
 }
 
+function formatWinsLabel(wins, targetWins) {
+  const safeWins = Math.max(0, Number(wins ?? 0));
+  const safeTarget = Math.max(1, Number(targetWins ?? 3));
+  return `${safeWins}/${safeTarget} побед`;
+}
+
 export function Board({
   me,
   game,
@@ -78,6 +84,9 @@ export function Board({
     );
   };
 
+  const myWinsLabel = formatWinsLabel(mySeriesWins, targetWins);
+  const oppWinsLabel = formatWinsLabel(oppSeriesWins, targetWins);
+
   return (
     <div
       className={`wrap ${modesLayout ? "wrap--modes" : "wrap--game"} ${viewTransitionClass}`.trim()}
@@ -125,6 +134,9 @@ export function Board({
                 </div>
                 <div className="badge-meta">
                   <span className={`mark ${String(youMark).toLowerCase()}`}>{youMark}</span>
+                  <span className="wins-label" title="Победы в серии">
+                    {myWinsLabel}
+                  </span>
                   {renderRoundSquares(mySeriesWins, youMark)}
                 </div>
               </article>
@@ -160,6 +172,9 @@ export function Board({
                 </div>
                 <div className="badge-meta">
                   <span className={`mark ${String(oppMark).toLowerCase()}`}>{oppMark}</span>
+                  <span className="wins-label" title="Победы в серии">
+                    {oppWinsLabel}
+                  </span>
                   {renderRoundSquares(oppSeriesWins, oppMark)}
                 </div>
               </article>
