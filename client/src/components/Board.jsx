@@ -15,9 +15,7 @@ function buildUserView(
 ) {
   const cleanName = user?.name?.trim();
   const cleanUsername = user?.username?.trim().replace(/^@/, "");
-  const username = cleanUsername
-    ? `@${cleanUsername}`
-    : buildGuestUsername(user?.id, fallbackUsername);
+  const username = cleanUsername ? `@${cleanUsername}` : buildGuestUsername(user?.id);
   const name = cleanName || fallbackName;
   const avatar = user?.avatar || fallbackAvatar;
 
@@ -28,13 +26,6 @@ function formatWinsLabel(wins, targetWins) {
   const safeWins = Math.max(0, Number(wins ?? 0));
   const safeTarget = Math.max(1, Number(targetWins ?? 3));
   return `${safeWins}/${safeTarget} побед`;
-}
-
-function isComputerOpponent(game, opp) {
-  const gameId = String(game?.gameId ?? "").toLowerCase();
-  const oppId = String(opp?.id ?? "").toLowerCase();
-  const oppUsername = String(opp?.username ?? "").toLowerCase();
-  return gameId === "local-bot" || oppId === "bot" || oppUsername === "bot";
 }
 
 export function Board({
@@ -57,17 +48,8 @@ export function Board({
 
   const hasOpp = Boolean(game?.opp);
   const oppView = hasOpp
-    ? buildUserView(
-        game.opp,
-        computerOpponent ? "Компьютер" : "Соперник",
-        "/img/logo.svg",
-        computerOpponent ? "bot" : "guest",
-      )
-    : {
-        name: computerOpponent ? "Компьютер" : "Соперник",
-        username: computerOpponent ? "@bot" : "@guest",
-        avatar: "/img/logo.svg",
-      };
+    ? buildUserView(game.opp, "Соперник")
+    : { name: "Соперник", username: "@guest", avatar: "/img/logo.svg" };
 
   const youMark = game?.you || "—";
   const oppMark = game?.you ? (game.you === "X" ? "O" : "X") : "—";

@@ -507,6 +507,7 @@ body {
   white-space: normal;
   overflow: hidden;
   text-overflow: clip;
+  line-clamp: 2;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   display: -webkit-box;
