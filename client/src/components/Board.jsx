@@ -39,7 +39,6 @@ export function Board({
   onInviteCodeClick,
 }) {
   const myView = buildUserView(me, "Вы");
-  const computerOpponent = isComputerOpponent(game, game?.opp);
 
   const hasOpp = game?.opp && String(game?.opp?.id) !== String(me?.id);
   const oppView = hasOpp
