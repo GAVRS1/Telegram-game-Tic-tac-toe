@@ -437,7 +437,7 @@ body {
   border: 1px solid rgba(58, 72, 93, 0.9);
   border-radius: 14px;
   min-width: 0;
-  min-height: 84px;
+  min-height: 92px;
   transition: border-color var(--anim-base) var(--anim-ease), box-shadow var(--anim-base) var(--anim-ease);
 }
 .badge--active {
@@ -446,10 +446,12 @@ body {
 }
 .badge-meta {
   display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 5px;
   flex-shrink: 0;
+  min-width: 74px;
 }
 .round-track {
   display: inline-flex;
@@ -502,13 +504,18 @@ body {
   overflow: hidden;
 }
 .badge .name {
-  white-space: nowrap;
+  white-space: normal;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  display: -webkit-box;
+  word-break: break-word;
   color: var(--text);
   opacity: 1;
   font-weight: 600;
   font-size: 13px;
+  line-height: 1.2;
 }
 .badge .username {
   white-space: nowrap;
@@ -517,6 +524,16 @@ body {
   color: var(--muted);
   font-size: 10px;
   opacity: 0.85;
+}
+.wins-label {
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: rgba(191, 219, 254, 0.95);
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .badge--opponent {
   flex-direction: row-reverse;
@@ -530,7 +547,7 @@ body {
   text-align: right;
 }
 .badge--opponent .badge-meta {
-  justify-content: flex-start;
+  align-items: flex-start;
 }
 /* ярче маркеры X/O */
 .mark {
@@ -1380,7 +1397,7 @@ body {
     gap: 6px;
   }
   .badge {
-    min-height: 74px;
+    min-height: 78px;
   }
   .badge .name {
     max-width: 100%;
@@ -1447,8 +1464,15 @@ body {
     padding: 8px;
     min-height: 70px;
   }
+  .badge-meta {
+    min-width: 68px;
+    gap: 4px;
+  }
   .mark {
     padding: 2px 8px;
+  }
+  .wins-label {
+    font-size: 9px;
   }
 }
 
@@ -1479,6 +1503,9 @@ body {
   }
   .badge .username {
     font-size: 10px;
+  }
+  .badge-meta {
+    min-width: 64px;
   }
   .board {
     width: min(
