@@ -1,13 +1,5 @@
 import React from "react";
 
-function buildUserLabel(user) {
-  const name = user?.name?.trim();
-  const username = user?.username?.trim();
-  if (name) return name;
-  if (username) return `@${username.replace(/^@/, "")}`;
-  return "Player";
-}
-
 function buildGuestUsername(id, fallback = "guest") {
   const safeId = String(id ?? "")
     .replace(/[^a-zA-Z0-9_-]/g, "")
@@ -19,10 +11,16 @@ function buildUserView(user, fallbackName, fallbackAvatar = "/img/logo.svg") {
   const cleanName = user?.name?.trim();
   const cleanUsername = user?.username?.trim().replace(/^@/, "");
   const username = cleanUsername ? `@${cleanUsername}` : buildGuestUsername(user?.id);
-  const name = cleanName || `@${cleanUsername}` || fallbackName;
+  const name = cleanName || fallbackName;
   const avatar = user?.avatar || fallbackAvatar;
 
   return { name, username, avatar };
+}
+
+function formatWinsLabel(wins, targetWins) {
+  const safeWins = Math.max(0, Number(wins ?? 0));
+  const safeTarget = Math.max(1, Number(targetWins ?? 3));
+  return `${safeWins}/${safeTarget} побед`;
 }
 
 export function Board({
@@ -44,8 +42,8 @@ export function Board({
 
   const hasOpp = game?.opp && String(game?.opp?.id) !== String(me?.id);
   const oppView = hasOpp
-    ? buildUserView(game.opp, "Оппонент")
-    : { name: "Оппонент", username: "@guest", avatar: "/img/logo.svg" };
+    ? buildUserView(game.opp, "Соперник")
+    : { name: "Соперник", username: "@guest", avatar: "/img/logo.svg" };
 
   const youMark = game?.you || "—";
   const oppMark = game?.you ? (game.you === "X" ? "O" : "X") : "—";
@@ -77,6 +75,9 @@ export function Board({
       </div>
     );
   };
+
+  const myWinsLabel = formatWinsLabel(mySeriesWins, targetWins);
+  const oppWinsLabel = formatWinsLabel(oppSeriesWins, targetWins);
 
   return (
     <div
@@ -115,7 +116,7 @@ export function Board({
                 <div className="info">
                   <img className="ava" id="youAva" src={myView.avatar} alt={myView.name} />
                   <div className="text">
-                    <span className="name" id="youName" title={buildUserLabel(me)}>
+                    <span className="name" id="youName" title={myView.name}>
                       {myView.name}
                     </span>
                     <span className="username" id="youUsername">
@@ -125,6 +126,9 @@ export function Board({
                 </div>
                 <div className="badge-meta">
                   <span className={`mark ${String(youMark).toLowerCase()}`}>{youMark}</span>
+                  <span className="wins-label" title="Победы в серии">
+                    {myWinsLabel}
+                  </span>
                   {renderRoundSquares(mySeriesWins, youMark)}
                 </div>
               </article>
@@ -160,6 +164,9 @@ export function Board({
                 </div>
                 <div className="badge-meta">
                   <span className={`mark ${String(oppMark).toLowerCase()}`}>{oppMark}</span>
+                  <span className="wins-label" title="Победы в серии">
+                    {oppWinsLabel}
+                  </span>
                   {renderRoundSquares(oppSeriesWins, oppMark)}
                 </div>
               </article>
