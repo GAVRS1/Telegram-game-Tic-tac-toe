@@ -7,12 +7,7 @@ function buildGuestUsername(id, fallback = "guest") {
   return `@${safeId ? `guest_${safeId}` : fallback}`;
 }
 
-function buildUserView(
-  user,
-  fallbackName,
-  fallbackAvatar = "/img/logo.svg",
-  fallbackUsername = "guest",
-) {
+function buildUserView(user, fallbackName, fallbackAvatar = "/img/logo.svg") {
   const cleanName = user?.name?.trim();
   const cleanUsername = user?.username?.trim().replace(/^@/, "");
   const username = cleanUsername ? `@${cleanUsername}` : buildGuestUsername(user?.id);
@@ -43,10 +38,9 @@ export function Board({
   lobbyInviteCode = "",
   onInviteCodeClick,
 }) {
-  const myView = buildUserView(me, "Вы", "/img/logo.svg", "you");
-  const computerOpponent = isComputerOpponent(game, game?.opp);
+  const myView = buildUserView(me, "Вы");
 
-  const hasOpp = Boolean(game?.opp);
+  const hasOpp = game?.opp && String(game?.opp?.id) !== String(me?.id);
   const oppView = hasOpp
     ? buildUserView(game.opp, "Соперник")
     : { name: "Соперник", username: "@guest", avatar: "/img/logo.svg" };
