@@ -806,11 +806,12 @@ export default function App() {
             label: "Сдаться",
             onClick: () => {
               if (localBotActive) {
+                hideModal();
                 finishComputerMatch("lose", gameRef.current.board);
               } else {
                 sendWs({ t: "game.resign", gameId: gameRef.current.gameId });
+                hideModal();
               }
-              hideModal();
               audioManager.playClick();
             },
           },

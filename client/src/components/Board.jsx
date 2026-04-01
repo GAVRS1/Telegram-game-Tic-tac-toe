@@ -23,13 +23,6 @@ function formatWinsLabel(wins, targetWins) {
   return `${safeWins}/${safeTarget} побед`;
 }
 
-function isComputerOpponent(game, opp) {
-  const gameId = String(game?.gameId ?? "").toLowerCase();
-  const oppId = String(opp?.id ?? "").toLowerCase();
-  const oppUsername = String(opp?.username ?? "").toLowerCase();
-  return gameId === "local-bot" || oppId === "bot" || oppUsername === "bot";
-}
-
 export function Board({
   me,
   game,
@@ -50,12 +43,8 @@ export function Board({
 
   const hasOpp = game?.opp && String(game?.opp?.id) !== String(me?.id);
   const oppView = hasOpp
-    ? buildUserView(game.opp, computerOpponent ? "Компьютер" : "Соперник")
-    : {
-        name: computerOpponent ? "Компьютер" : "Соперник",
-        username: computerOpponent ? "@bot" : "@guest",
-        avatar: "/img/logo.svg",
-      };
+    ? buildUserView(game.opp, "Соперник")
+    : { name: "Соперник", username: "@guest", avatar: "/img/logo.svg" };
 
   const youMark = game?.you || "—";
   const oppMark = game?.you ? (game.you === "X" ? "O" : "X") : "—";
