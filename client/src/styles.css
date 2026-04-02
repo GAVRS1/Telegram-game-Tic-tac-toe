@@ -1389,7 +1389,7 @@ body {
   }
 }
 
-@media (max-width: 400px) {
+@media (max-width: 460px) {
   :root {
     --navbar-height: 76px;
   }
@@ -1417,6 +1417,17 @@ body {
   .match-status-panel {
     order: -1;
     min-height: 72px;
+  }
+  .badge-meta {
+    min-width: 0;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  #oppBadge .badge-meta {
+    justify-content: flex-start;
   }
   .navbar {
     gap: 10px;
@@ -1529,8 +1540,33 @@ body {
     gap: 6px;
   }
   .match-panel {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      "status status"
+      "you opp";
     gap: 6px;
+  }
+  #youBadge {
+    grid-area: you;
+  }
+  #oppBadge {
+    grid-area: opp;
+  }
+  .match-status-panel {
+    grid-area: status;
+    min-height: 64px;
+  }
+  .badge {
+    min-height: 62px;
+  }
+  .badge .name {
+    font-size: 12px;
+  }
+  .badge .username {
+    font-size: 9px;
+  }
+  .badge-meta {
+    min-width: 56px;
   }
   .board {
     width: min(
