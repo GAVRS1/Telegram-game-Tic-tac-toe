@@ -564,6 +564,8 @@ export default function App() {
     setIsFriendsLobbyState(true);
     setFriendInviteInputVisible(false);
     setFriendInviteInput("");
+    setScreen("game");
+    setStatus({ text: "Создаём лобби и ждём друга…", blink: true });
     createInvite();
   }, [createInvite]);
 
@@ -574,6 +576,7 @@ export default function App() {
       notifications.info("Введите код приглашения");
       return;
     }
+    setScreen("game");
     sendWs({ t: "invite.accept", code });
     setStatus({ text: "Подключаем к лобби друга…", blink: true });
     audioManager.playClick();

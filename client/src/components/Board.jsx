@@ -82,27 +82,29 @@ export function Board({
       className={`wrap ${modesLayout ? "wrap--modes" : "wrap--game"} ${viewTransitionClass}`.trim()}
     >
       <div className="top-meta">
-        <button className="author-badge" type="button" title="Автор 0xGavrs" onClick={onAuthorClick}>
-          <img src="https://t.me/i/userpic/320/rsgavrs.jpg" alt="0xGavrs" loading="lazy" />
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", lineHeight: 1.2 }}>
-            <span>0xGavrs</span>
-            <small>Автор игры</small>
-          </div>
-        </button>
-        {lobbyInviteCode ? (
-          <button className="lobby-code" type="button" onClick={onInviteCodeClick} title="Нажмите, чтобы скопировать код">
-            <small>Инвайт-код</small>
-            <span>{lobbyInviteCode}</span>
+        <div className="top-meta__identity">
+          <button className="author-badge" type="button" title="Автор 0xGavrs" onClick={onAuthorClick}>
+            <img src="https://t.me/i/userpic/320/rsgavrs.jpg" alt="0xGavrs" loading="lazy" />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", lineHeight: 1.2 }}>
+              <span>0xGavrs</span>
+              <small>Автор игры</small>
+            </div>
           </button>
-        ) : null}
+          <div className="online-stats online-stats--top" aria-live="polite">
+            Онлайн: {totalOnline}
+          </div>
+        </div>
         <div className="top-meta__stats">
           <div className="coin-balance" aria-live="polite">
             <img className="coin-icon" src="/img/coin.svg" alt="" aria-hidden="true" />
             <span>{safeCoinBalance}</span>
           </div>
-          <div className="online-stats online-stats--top" aria-live="polite">
-            Онлайн: {totalOnline}
-          </div>
+          {lobbyInviteCode ? (
+            <button className="lobby-code" type="button" onClick={onInviteCodeClick} title="Нажмите, чтобы скопировать код">
+              <small>Инвайт-код</small>
+              <span>{lobbyInviteCode}</span>
+            </button>
+          ) : null}
         </div>
       </div>
 
