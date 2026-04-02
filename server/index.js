@@ -33,7 +33,21 @@ const parseCorsOrigins = (value) =>
     .map((item) => item.trim())
     .filter(Boolean);
 
-const allowedCorsOrigins = parseCorsOrigins(CORS_ORIGINS);
+const normalizeOrigin = (value) => {
+  if (!value) return "";
+  try {
+    return new URL(value).origin;
+  } catch {
+    return "";
+  }
+};
+
+const allowedCorsOrigins = [
+  ...new Set([
+    ...parseCorsOrigins(CORS_ORIGINS),
+    ...(PUBLIC_URL ? [normalizeOrigin(PUBLIC_URL)] : []),
+  ]),
+].filter(Boolean);
 
 const isLocalhostOrigin = (origin) => {
   try {
