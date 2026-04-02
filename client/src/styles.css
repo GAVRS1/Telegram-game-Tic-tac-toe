@@ -527,16 +527,6 @@ body {
   font-size: 11px;
   opacity: 0.85;
 }
-.wins-label {
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1.1;
-  color: rgba(191, 219, 254, 0.95);
-  max-width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 .badge--opponent {
   flex-direction: row-reverse;
   text-align: right;
@@ -1523,8 +1513,33 @@ body {
   .mark {
     padding: 2px 8px;
   }
-  .wins-label {
-    font-size: 9px;
+}
+
+@media (max-width: 420px) {
+  .mode-card {
+    padding: 14px;
+    gap: 12px;
+  }
+  .mode-card__media {
+    min-height: 140px;
+  }
+  .mode-card__description {
+    min-height: auto;
+  }
+  .mode-card__extra {
+    min-height: auto;
+    gap: 10px;
+  }
+  .mode-card__friend-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .mode-card__friend-join {
+    grid-column: span 1;
+    flex-direction: column;
+  }
+  .mode-card__friend-button {
+    min-height: 42px;
+    padding: 10px 12px;
   }
 }
 
