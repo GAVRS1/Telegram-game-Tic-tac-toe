@@ -70,6 +70,13 @@ export function Board({
     );
   };
 
+  const renderRoundSide = (wins, mark, mirrored = false) => (
+    <div className={`match-round-side ${mirrored ? "match-round-side--mirrored" : ""}`.trim()}>
+      <span className={`mark ${String(mark).toLowerCase()}`}>{mark}</span>
+      {renderRoundSquares(wins, mark)}
+    </div>
+  );
+
   return (
     <div
       className={`wrap ${modesLayout ? "wrap--modes" : "wrap--game"} ${viewTransitionClass}`.trim()}
@@ -115,9 +122,6 @@ export function Board({
                     </span>
                   </div>
                 </div>
-                <div className="badge-meta">
-                  <span className={`mark ${String(youMark).toLowerCase()}`}>{youMark}</span>
-                </div>
               </article>
 
               <article className="match-status-panel">
@@ -125,9 +129,9 @@ export function Board({
                   {statusText?.text || "Готово"}
                 </div>
                 <div className="status-line match-round-track" id="seriesScore">
-                  {renderRoundSquares(mySeriesWins, youMark)}
+                  {renderRoundSide(mySeriesWins, youMark)}
                   <span className="match-round">Раунд {roundNumber}</span>
-                  {renderRoundSquares(oppSeriesWins, oppMark)}
+                  {renderRoundSide(oppSeriesWins, oppMark, true)}
                 </div>
                 <div className="match-score" aria-label="Счет по раундам">
                   <span>{mySeriesWins}</span>
@@ -150,9 +154,6 @@ export function Board({
                       {oppView.username}
                     </span>
                   </div>
-                </div>
-                <div className="badge-meta">
-                  <span className={`mark ${String(oppMark).toLowerCase()}`}>{oppMark}</span>
                 </div>
               </article>
             </section>
