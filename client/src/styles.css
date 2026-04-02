@@ -402,7 +402,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 12px;
+  padding: 12px 12px 8px;
   overflow: hidden;
 }
 .card--modes {
@@ -602,8 +602,9 @@ body {
 }
 .match-round-track {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(52px, auto) auto;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   font-size: 11px;
 }
@@ -618,10 +619,19 @@ body {
   flex-direction: row-reverse;
 }
 .match-round-track .round-track {
-  width: 100%;
+  width: auto;
   display: inline-flex;
   justify-content: center;
   gap: 4px;
+}
+.match-round-side .mark {
+  flex: 0 0 auto;
+  padding: 2px 7px;
+  font-size: 12px;
+}
+.match-round-track .round-square {
+  width: 8px;
+  height: 8px;
 }
 .match-score {
   margin-top: 2px;
@@ -650,14 +660,15 @@ body {
 
 /* ====== ДОСКА 3×3 ====== */
 .board {
-  width: min(100%, 420px, calc(var(--tg-viewport-height) - var(--navbar-height) - 220px));
+  width: min(100%, 420px);
   aspect-ratio: 1/1;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: clamp(6px, 1.2vmin, 10px);
   margin: 0 auto;
   min-width: 0;
-  max-height: min(100%, 420px, calc(var(--tg-viewport-height) - var(--navbar-height) - 220px));
+  max-height: none;
+  flex: 0 0 auto;
   transition:
     transform var(--anim-base) var(--anim-ease),
     opacity var(--anim-fast) var(--anim-ease),
@@ -674,8 +685,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 2px 4px;
-  overflow: hidden;
+  padding: 0 2px 0;
+  overflow: auto;
 }
 .cell {
   aspect-ratio: 1/1;
@@ -1383,7 +1394,7 @@ body {
     padding: 12px 12px 14px;
   }
   .card--game {
-    padding: 10px;
+    padding: 10px 10px 6px;
     gap: 8px;
   }
   .match-panel {
@@ -1453,8 +1464,12 @@ body {
     gap: 4px;
   }
   .match-round-side .mark {
-    padding: 2px 8px;
-    font-size: 12px;
+    padding: 2px 6px;
+    font-size: 11px;
+  }
+  .match-round-track .round-square {
+    width: 7px;
+    height: 7px;
   }
   .navbar {
     gap: 10px;
@@ -1577,6 +1592,7 @@ body {
       320px,
       calc(var(--tg-viewport-height) - var(--navbar-height) - 190px)
     );
+    max-height: none;
     gap: 5px;
   }
   .cell {
