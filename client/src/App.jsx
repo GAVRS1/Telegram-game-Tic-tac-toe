@@ -240,6 +240,7 @@ const RATING_METRICS = [
     iconType: "handshake",
   },
 ];
+const LEADERBOARD_TABS = ["wins", "coins"];
 const ICON_PATHS = {
   coin: "/img/coin.svg",
   trophy: "/img/trophy.svg",
@@ -999,11 +1000,49 @@ export default function App() {
             style={{
               display: "flex",
               flexDirection: "column",
-              gap: "8px",
-              maxHeight: "50vh",
-              overflow: "auto",
+              gap: "10px",
             }}
           >
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: `repeat(${LEADERBOARD_TABS.length}, minmax(0, 1fr))`,
+                gap: "8px",
+              }}
+            >
+              {LEADERBOARD_TABS.map((tabKey) => {
+                const tabMetric = getRatingMetricConfig(tabKey);
+                const isActive = tabMetric.key === selectedMetric.key;
+                return (
+                  <button
+                    key={tabMetric.key}
+                    type="button"
+                    className="btn"
+                    style={{
+                      minHeight: "38px",
+                      borderColor: isActive
+                        ? "rgba(59, 130, 246, 0.9)"
+                        : "var(--line)",
+                      background: isActive
+                        ? "rgba(59, 130, 246, 0.2)"
+                        : "rgba(148, 163, 184, 0.12)",
+                    }}
+                    onClick={() => loadRating(tabMetric.key)}
+                  >
+                    {tabMetric.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px",
+                maxHeight: "45vh",
+                overflow: "auto",
+              }}
+            >
             {rows.length === 0 ? (
               <div>Список пуст.</div>
             ) : (
@@ -1066,6 +1105,7 @@ export default function App() {
                 </div>
               ))
             )}
+            </div>
           </div>
         );
 

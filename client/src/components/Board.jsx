@@ -129,7 +129,6 @@ export function Board({
                   <span className="wins-label" title="Победы в серии">
                     {myWinsLabel}
                   </span>
-                  {renderRoundSquares(mySeriesWins, youMark)}
                 </div>
               </article>
 
@@ -137,8 +136,10 @@ export function Board({
                 <div className={`status-line match-status ${statusText?.blink ? "blink" : ""}`} id="status">
                   {statusText?.text || "Готово"}
                 </div>
-                <div className="status-line match-round" id="seriesScore">
-                  Раунд {roundNumber}
+                <div className="status-line match-round-track" id="seriesScore">
+                  {renderRoundSquares(mySeriesWins, youMark)}
+                  <span className="match-round">Раунд {roundNumber}</span>
+                  {renderRoundSquares(oppSeriesWins, oppMark)}
                 </div>
                 <div className="match-score" aria-label="Счет по раундам">
                   <span>{mySeriesWins}</span>
@@ -167,7 +168,6 @@ export function Board({
                   <span className="wins-label" title="Победы в серии">
                     {oppWinsLabel}
                   </span>
-                  {renderRoundSquares(oppSeriesWins, oppMark)}
                 </div>
               </article>
             </section>
