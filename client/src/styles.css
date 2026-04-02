@@ -372,11 +372,11 @@ body {
 .wrap--modes {
   flex: 1;
   min-height: 0;
-  padding-bottom: 20px;
+  padding-bottom: 10px;
 }
 .wrap--game {
   justify-content: flex-start;
-  gap: 8px;
+  gap: 6px;
 }
 .card {
   width: 100%;
@@ -683,9 +683,9 @@ body {
   flex: 1;
   min-height: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 0 2px 0;
+  padding: 2px 2px 0;
   overflow: auto;
 }
 .cell {
@@ -884,23 +884,25 @@ body {
 /* ====== АВТОР ====== */
 .top-meta {
   width: 100%;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 6px 8px;
   padding: 2px 0;
 }
 .top-meta__identity {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
   gap: 6px;
   min-width: 0;
 }
 .top-meta__stats {
   display: inline-flex;
   align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 6px;
-  margin-left: auto;
   min-width: 0;
   align-self: flex-start;
 }
@@ -1534,12 +1536,10 @@ body {
 
 @media (max-width: 420px) {
   .top-meta {
-    flex-wrap: wrap;
+    grid-template-columns: minmax(0, 1fr) auto;
     row-gap: 4px;
-    align-items: flex-start;
   }
   .top-meta__stats {
-    width: 100%;
     justify-content: flex-end;
     align-self: flex-start;
   }
@@ -1555,29 +1555,29 @@ body {
     max-width: 112px;
   }
   .mode-card {
-    padding: 14px;
-    gap: 12px;
+    padding: 12px;
+    gap: 10px;
   }
   .mode-card__media {
-    min-height: 140px;
+    min-height: 118px;
   }
   .mode-card__description {
-    min-height: auto;
+    min-height: 52px;
+    font-size: 13px;
+    line-height: 1.4;
   }
   .mode-card__extra {
     min-height: auto;
-    gap: 10px;
-  }
-  .mode-card__friend-actions {
-    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
   }
   .mode-card__friend-join {
-    grid-column: span 1;
-    flex-direction: column;
+    grid-column: span 2;
+    flex-direction: row;
   }
   .mode-card__friend-button {
-    min-height: 42px;
-    padding: 10px 12px;
+    min-height: 40px;
+    padding: 10px;
+    font-size: 15px;
   }
 }
 
