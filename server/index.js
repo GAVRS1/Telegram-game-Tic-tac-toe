@@ -25,6 +25,7 @@ const PORT = Number(process.env.PORT || 8080);
 const BOT_TOKEN = process.env.BOT_TOKEN || "";
 const SKIP_BOT = process.env.SKIP_BOT === "1";
 const PUBLIC_URL = (process.env.PUBLIC_URL || "").trim();
+const BOT_WEB_APP_URL = (process.env.BOT_WEB_APP_URL || PUBLIC_URL).trim();
 const CORS_ORIGINS = (process.env.CORS_ORIGINS || "").trim();
 
 const parseCorsOrigins = (value) =>
@@ -245,7 +246,7 @@ wss.on("connection", (ws) => {
   });
 });
 
-launchTelegramBot({ token: BOT_TOKEN, skip: SKIP_BOT, publicUrl: PUBLIC_URL });
+launchTelegramBot({ token: BOT_TOKEN, skip: SKIP_BOT, webAppUrl: BOT_WEB_APP_URL });
 
 (async () => {
   try {
