@@ -1,6 +1,20 @@
 const ENV_API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").trim().replace(/\/$/, "");
 const ENV_WS_URL_RAW = (import.meta.env.VITE_WS_URL || "").trim();
 
+function isUnstableTunnelUrl(url) {
+  return /https?:\/\/[^/]*trycloudflare\.com/i.test(url) || /wss?:\/\/[^/]*trycloudflare\.com/i.test(url);
+}
+
+function resolveApiBaseUrl() {
+  if (ENV_API_BASE_URL && !isUnstableTunnelUrl(ENV_API_BASE_URL)) {
+    return ENV_API_BASE_URL;
+  }
+  if (typeof window !== "undefined") {
+    return window.location.origin;
+  }
+  return "";
+}
+
 function normalizeWsProtocol(url) {
   if (!url) return "";
   if (/^wss?:\/\//i.test(url)) return url;
@@ -21,9 +35,9 @@ function httpToWs(url) {
 export function resolveWsCandidates() {
   const candidates = [];
   const normalizedEnv = normalizeWsProtocol(ENV_WS_URL_RAW);
-  if (normalizedEnv) candidates.push(normalizedEnv);
+  if (normalizedEnv && !isUnstableTunnelUrl(normalizedEnv)) candidates.push(normalizedEnv);
 
-  const fromApiBase = httpToWs(ENV_API_BASE_URL);
+  const fromApiBase = httpToWs(resolveApiBaseUrl());
   if (fromApiBase) candidates.push(fromApiBase);
 
   if (typeof window !== "undefined") {
@@ -39,6 +53,7 @@ export function resolveWsUrl() {
 
 export function apiUrl(path) {
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
-  if (!ENV_API_BASE_URL) return cleanPath;
-  return `${ENV_API_BASE_URL}${cleanPath}`;
+  const apiBase = resolveApiBaseUrl();
+  if (!apiBase) return cleanPath;
+  return `${apiBase}${cleanPath}`;
 }
