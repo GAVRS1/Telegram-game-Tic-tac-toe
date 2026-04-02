@@ -20,7 +20,7 @@ function buildReferralLink(refCode) {
       DEFAULT_BOT_USERNAME,
   ).trim();
   if (!botUsername) return "";
-  return `https://t.me/${botUsername}/game?startapp=${encodeURIComponent(payload)}`;
+  return `https://t.me/${botUsername}/play?startapp=${encodeURIComponent(payload)}`;
 }
 
 export function getPool() {

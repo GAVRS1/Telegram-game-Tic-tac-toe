@@ -17,7 +17,7 @@ export const createInviteService = ({ port, publicUrl }) => {
 
   const buildInviteLink = (req, code) => {
     const payload = encodeURIComponent(buildLobbyInvitePayload(code));
-    return `https://t.me/TTToeONL_bot/game?startapp=${payload}`;
+    return `https://t.me/TTToeONL_bot/play?startapp=${payload}`;
   };
 
   const cacheInvite = (invite) => {
