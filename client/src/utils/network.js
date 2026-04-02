@@ -10,11 +10,31 @@ function normalizeWsProtocol(url) {
   return url;
 }
 
-export function resolveWsUrl() {
+function httpToWs(url) {
+  if (!url) return "";
+  if (/^https?:\/\//i.test(url)) {
+    return url.replace(/^http/i, "ws");
+  }
+  return "";
+}
+
+export function resolveWsCandidates() {
+  const candidates = [];
   const normalizedEnv = normalizeWsProtocol(ENV_WS_URL_RAW);
-  if (normalizedEnv) return normalizedEnv;
-  if (typeof window === "undefined") return "";
-  return window.location.origin.replace(/^http/i, "ws");
+  if (normalizedEnv) candidates.push(normalizedEnv);
+
+  const fromApiBase = httpToWs(ENV_API_BASE_URL);
+  if (fromApiBase) candidates.push(fromApiBase);
+
+  if (typeof window !== "undefined") {
+    candidates.push(window.location.origin.replace(/^http/i, "ws"));
+  }
+
+  return [...new Set(candidates.filter(Boolean))];
+}
+
+export function resolveWsUrl() {
+  return resolveWsCandidates()[0] || "";
 }
 
 export function apiUrl(path) {

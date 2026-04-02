@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Board } from "./components/Board.jsx";
 import { GameModesCarousel } from "./components/GameModesCarousel.jsx";
 import { Nav } from "./components/Nav.jsx";
@@ -14,7 +14,7 @@ import {
   normalizeId,
   sanitizeUsername,
 } from "./utils/identity.js";
-import { apiUrl, resolveWsUrl } from "./utils/network.js";
+import { apiUrl, resolveWsCandidates, resolveWsUrl } from "./utils/network.js";
 import { parseStartPayload } from "./utils/startPayload.js";
 
 const WIN_PHRASES = [
@@ -421,7 +421,8 @@ export default function App() {
     };
   }, [telegram]);
 
-  const wsUrl = resolveWsUrl();
+  const wsUrls = useMemo(() => resolveWsCandidates(), []);
+  const wsUrl = wsUrls[0] || resolveWsUrl();
 
   const sendWs = useCallback((payload) => sendRef.current(payload), []);
 
@@ -1892,6 +1893,7 @@ export default function App() {
 
   const { send: sendWsRaw } = useWebSocket({
     url: wsUrl,
+    urls: wsUrls,
     onOpen,
     onMessage,
     onClose,
