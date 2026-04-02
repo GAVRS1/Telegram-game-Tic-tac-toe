@@ -1,12 +1,8 @@
 const ENV_API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").trim().replace(/\/$/, "");
 const ENV_WS_URL_RAW = (import.meta.env.VITE_WS_URL || "").trim();
 
-function isUnstableTunnelUrl(url) {
-  return /https?:\/\/[^/]*trycloudflare\.com/i.test(url) || /wss?:\/\/[^/]*trycloudflare\.com/i.test(url);
-}
-
 function resolveApiBaseUrl() {
-  if (ENV_API_BASE_URL && !isUnstableTunnelUrl(ENV_API_BASE_URL)) {
+  if (ENV_API_BASE_URL) {
     return ENV_API_BASE_URL;
   }
   if (typeof window !== "undefined") {
@@ -35,7 +31,7 @@ function httpToWs(url) {
 export function resolveWsCandidates() {
   const candidates = [];
   const normalizedEnv = normalizeWsProtocol(ENV_WS_URL_RAW);
-  if (normalizedEnv && !isUnstableTunnelUrl(normalizedEnv)) candidates.push(normalizedEnv);
+  if (normalizedEnv) candidates.push(normalizedEnv);
 
   const fromApiBase = httpToWs(resolveApiBaseUrl());
   if (fromApiBase) candidates.push(fromApiBase);
