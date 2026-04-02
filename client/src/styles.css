@@ -215,12 +215,15 @@ body {
   font-size: 14px;
   color: var(--muted);
   line-height: 1.55;
+  min-height: 66px;
 }
 .mode-card__extra {
   margin-top: auto;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-height: 114px;
+  justify-content: flex-end;
 }
 .mode-card__cta {
   width: 100%;
@@ -247,9 +250,11 @@ body {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+  align-items: stretch;
 }
 .mode-card__friend-button {
   width: 100%;
+  min-height: 44px;
   padding: 12px 14px;
   border-radius: 14px;
   border: 1px solid #365b43;
@@ -274,6 +279,7 @@ body {
   grid-column: span 2;
   display: flex;
   gap: 8px;
+  align-items: stretch;
   opacity: 0;
   transform: translateY(8px) scale(0.98);
   max-height: 0;
@@ -421,7 +427,7 @@ body {
 
 .match-panel {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(148px, 0.85fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(136px, 0.76fr) minmax(0, 1fr);
   gap: 10px;
   align-items: center;
   width: 100%;
@@ -437,7 +443,7 @@ body {
   border: 1px solid rgba(58, 72, 93, 0.9);
   border-radius: 14px;
   min-width: 0;
-  min-height: 92px;
+  min-height: 84px;
   transition: border-color var(--anim-base) var(--anim-ease), box-shadow var(--anim-base) var(--anim-ease);
 }
 .badge--active {
@@ -449,9 +455,9 @@ body {
   flex-direction: column;
   align-items: flex-end;
   justify-content: center;
-  gap: 5px;
+  gap: 4px;
   flex-shrink: 0;
-  min-width: 74px;
+  min-width: 64px;
 }
 .round-track {
   display: inline-flex;
@@ -499,23 +505,18 @@ body {
 .badge .text {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
   min-width: 0;
   overflow: hidden;
 }
 .badge .name {
-  white-space: normal;
+  white-space: nowrap;
   overflow: hidden;
-  text-overflow: clip;
-  line-clamp: 2;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  display: -webkit-box;
-  word-break: break-word;
+  text-overflow: ellipsis;
   color: var(--text);
   opacity: 1;
-  font-weight: 600;
-  font-size: 13px;
+  font-weight: 700;
+  font-size: 12px;
   line-height: 1.2;
 }
 .badge .username {
@@ -523,7 +524,7 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
   opacity: 0.85;
 }
 .wins-label {
@@ -584,7 +585,7 @@ body {
 
 .match-status-panel {
   min-width: 0;
-  min-height: 84px;
+  min-height: 78px;
   border-radius: 14px;
   border: 1px solid rgba(69, 85, 110, 0.75);
   background: linear-gradient(180deg, rgba(13, 22, 38, 0.94), rgba(10, 17, 30, 0.95));
@@ -592,8 +593,8 @@ body {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 4px;
-  padding: 8px 10px;
+  gap: 5px;
+  padding: 7px 8px;
 }
 
 /* ====== СТРОКА СТАТУСА ====== */
@@ -617,8 +618,22 @@ body {
   font-weight: 700;
 }
 .match-round {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--muted);
+  white-space: nowrap;
+}
+.match-round-track {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+.match-round-track .round-track {
+  width: 100%;
+  display: inline-flex;
+  justify-content: center;
+  gap: 4px;
 }
 .match-score {
   margin-top: 2px;
@@ -647,13 +662,13 @@ body {
 
 /* ====== ДОСКА 3×3 ====== */
 .board {
-  width: min(100%, 470px);
+  width: min(100%, 420px);
   aspect-ratio: 1/1;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: clamp(6px, 1.2vmin, 10px);
   margin: 0 auto;
-  max-height: min(100%, 470px);
+  max-height: min(100%, 420px);
   transition:
     transform var(--anim-base) var(--anim-ease),
     opacity var(--anim-fast) var(--anim-ease),
@@ -1380,7 +1395,7 @@ body {
     gap: 8px;
   }
   .match-panel {
-    grid-template-columns: minmax(0, 1fr) minmax(132px, 0.78fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(120px, 0.72fr) minmax(0, 1fr);
     gap: 8px;
   }
   .board {
@@ -1454,7 +1469,8 @@ body {
     font-size: 12px;
   }
   .badge .username {
-    display: none;
+    display: block;
+    font-size: 10px;
   }
 }
 
@@ -1538,7 +1554,7 @@ body {
     font-size: 12px;
   }
   .badge .username {
-    font-size: 10px;
+    font-size: 9px;
   }
   .badge-meta {
     min-width: 64px;
