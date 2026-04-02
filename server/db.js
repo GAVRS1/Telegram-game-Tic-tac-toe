@@ -245,6 +245,25 @@ export async function ensureSchema() {
   await p.query(
     `CREATE INDEX IF NOT EXISTS idx_invites_expires ON invites (expires_at);`,
   );
+  await p.query(`
+    CREATE TABLE IF NOT EXISTS telegram_chat_subscribers (
+      chat_id BIGINT PRIMARY KEY,
+      user_id BIGINT,
+      username TEXT,
+      first_name TEXT,
+      last_name TEXT,
+      is_active BOOLEAN NOT NULL DEFAULT true,
+      joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      last_notified_at TIMESTAMPTZ
+    );
+  `);
+  await p.query(
+    `CREATE INDEX IF NOT EXISTS idx_tg_subscribers_active_notify ON telegram_chat_subscribers (is_active, last_notified_at);`,
+  );
+  await p.query(
+    `CREATE INDEX IF NOT EXISTS idx_tg_subscribers_user_id ON telegram_chat_subscribers (user_id);`,
+  );
   await ensureAchievementDefinitions(p);
   return true;
 }
@@ -924,4 +943,101 @@ export async function getAdminReferralDiagnostics() {
       coins_awarded: Number(row.coins_awarded || 0),
     })),
   };
+}
+
+export async function upsertTelegramSubscriber({
+  chatId,
+  userId = null,
+  username = null,
+  firstName = null,
+  lastName = null,
+  isActive = true,
+}) {
+  const p = getPool();
+  if (!p) return false;
+  if (!isNumericId(chatId)) return false;
+  if (userId !== null && !isNumericId(userId)) return false;
+
+  await p.query(
+    `
+      INSERT INTO telegram_chat_subscribers (
+        chat_id, user_id, username, first_name, last_name, is_active, last_seen_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, NOW())
+      ON CONFLICT (chat_id) DO UPDATE SET
+        user_id = COALESCE(EXCLUDED.user_id, telegram_chat_subscribers.user_id),
+        username = EXCLUDED.username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        is_active = EXCLUDED.is_active,
+        last_seen_at = NOW();
+    `,
+    [
+      Number(chatId),
+      userId === null ? null : Number(userId),
+      username || null,
+      firstName || null,
+      lastName || null,
+      isActive === true,
+    ],
+  );
+  return true;
+}
+
+export async function getTelegramSubscribersForReminder({
+  maxCount = 200,
+  minDaysSinceLastNotify = 2,
+}) {
+  const p = getPool();
+  if (!p) return [];
+  const limit = Math.max(1, Math.min(1000, Number(maxCount) || 200));
+  const days = Math.max(1, Math.min(30, Number(minDaysSinceLastNotify) || 2));
+  const { rows } = await p.query(
+    `
+      SELECT chat_id
+      FROM telegram_chat_subscribers
+      WHERE is_active = true
+        AND (
+          last_notified_at IS NULL
+          OR last_notified_at <= NOW() - ($1::text || ' days')::interval
+        )
+      ORDER BY COALESCE(last_notified_at, TIMESTAMPTZ 'epoch') ASC, joined_at ASC
+      LIMIT $2;
+    `,
+    [String(days), limit],
+  );
+  return rows.map((row) => Number(row.chat_id)).filter(Number.isFinite);
+}
+
+export async function markTelegramSubscriberNotified(chatId) {
+  const p = getPool();
+  if (!p) return false;
+  if (!isNumericId(chatId)) return false;
+
+  await p.query(
+    `
+      UPDATE telegram_chat_subscribers
+      SET last_notified_at = NOW(),
+          is_active = true
+      WHERE chat_id = $1;
+    `,
+    [Number(chatId)],
+  );
+  return true;
+}
+
+export async function setTelegramSubscriberActive(chatId, isActive) {
+  const p = getPool();
+  if (!p) return false;
+  if (!isNumericId(chatId)) return false;
+  await p.query(
+    `
+      UPDATE telegram_chat_subscribers
+      SET is_active = $2,
+          last_seen_at = NOW()
+      WHERE chat_id = $1;
+    `,
+    [Number(chatId), isActive === true],
+  );
+  return true;
 }

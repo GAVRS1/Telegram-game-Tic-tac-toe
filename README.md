@@ -59,6 +59,9 @@
 3. Создайте `.env` с настройками:
    - `PORT` — порт HTTP/WS (по умолчанию 8080);
    - `BOT_TOKEN` — токен Telegram-бота;
+   - `BOT_WEB_APP_URL` — URL фронтенда, который откроется по кнопке «Открыть игру» в боте (например, `https://tttoeonl.netlify.app`). Если не задан, используется `PUBLIC_URL`;
+   - `BOT_REMINDER_DAYS_MIN` и `BOT_REMINDER_DAYS_MAX` — минимальный/максимальный интервал (в днях) для авто-рассылки приглашений поиграть пользователям, у которых есть чат с ботом (по умолчанию `2` и `3`);
+   - `BOT_REMINDER_BATCH` — сколько чатов максимум обрабатывать за один цикл рассылки (по умолчанию `20`);
    - `TELEGRAM_INITDATA_TTL_SEC` — TTL для Telegram `initData` в секундах (по умолчанию `600`, то есть 10 минут). Если `auth_date` старше TTL, данные авторизации отклоняются;
    - `PUBLIC_URL` — внешний URL для Web App (если отличается от локального);
    - `CORS_ORIGINS` — CSV-список разрешённых Origin для backend API (поддерживаются маски вида `https://*.netlify.app`, localhost разрешён для dev автоматически), например: `https://app.example.com,https://*.netlify.app`;
