@@ -634,7 +634,7 @@ body {
   height: 8px;
 }
 .match-score {
-  margin-top: 2px;
+  margin-top: 0;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -885,7 +885,7 @@ body {
 .top-meta {
   width: 100%;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 6px;
   padding: 2px 0;
@@ -902,6 +902,7 @@ body {
   gap: 6px;
   margin-left: auto;
   min-width: 0;
+  align-self: flex-start;
 }
 .author-badge {
   position: relative;
@@ -942,6 +943,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  line-height: 1;
   color: var(--text);
   font-size: 11px;
   font-weight: 700;
@@ -1534,10 +1536,12 @@ body {
   .top-meta {
     flex-wrap: wrap;
     row-gap: 4px;
+    align-items: flex-start;
   }
   .top-meta__stats {
     width: 100%;
     justify-content: flex-end;
+    align-self: flex-start;
   }
   .online-stats--top {
     font-size: 9px;
