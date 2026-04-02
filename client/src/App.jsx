@@ -225,18 +225,18 @@ function formatDate(value) {
 }
 
 const RATING_METRICS = [
-  { key: "wins", label: "Победы", valueLabel: "Победы", iconType: "trophy" },
-  { key: "coins", label: "Монеты", valueLabel: "Монет", iconType: "coin" },
+  { key: "wins", label: "Победы", valueLabel: "", iconType: "trophy" },
+  { key: "coins", label: "Монеты", valueLabel: "", iconType: "coin" },
   {
     key: "achievements",
     label: "Достижения",
-    valueLabel: "Открыто достижений",
+    valueLabel: "",
     iconType: "medal",
   },
   {
     key: "invites",
     label: "Приглашения",
-    valueLabel: "Приглашено друзей",
+    valueLabel: "",
     iconType: "handshake",
   },
 ];
@@ -1004,41 +1004,6 @@ export default function App() {
               overflow: "auto",
             }}
           >
-            <div
-              style={{
-                display: "flex",
-                gap: "8px",
-                alignItems: "center",
-                flexWrap: "wrap",
-                marginBottom: "4px",
-              }}
-            >
-              {RATING_METRICS.map((item) => {
-                const active = selectedMetric.key === item.key;
-                return (
-                  <button
-                    key={item.key}
-                    type="button"
-                    className={`btn ${active ? "primary" : ""}`}
-                    style={{ padding: "6px 10px", minHeight: "32px" }}
-                    onClick={() => loadRating(item.key)}
-                  >
-                    {item.label}
-                  </button>
-                );
-              })}
-            </div>
-            <div
-              style={{
-                fontSize: "12px",
-                color: "var(--muted)",
-                marginBottom: "4px",
-              }}
-            >
-              Тип рейтинга:{" "}
-              <b style={{ color: "var(--text)" }}>{selectedMetric.label}</b> •
-              Метрика: {selectedMetric.valueLabel}
-            </div>
             {rows.length === 0 ? (
               <div>Список пуст.</div>
             ) : (
@@ -1087,20 +1052,15 @@ export default function App() {
                   <div
                     style={{
                       display: "flex",
-                      flexDirection: "column",
+                      flexDirection: "row",
                       alignItems: "flex-end",
-                      gap: "4px",
-                      fontSize: "12px",
-                      color: "var(--muted)",
+                      gap: "6px",
+                      fontSize: "14px",
+                      color: "var(--text)",
                     }}
                   >
-                    <div style={{ fontWeight: 700, color: "var(--text)" }}>
-                      {renderMetricIcon(selectedMetric.iconType)} {metricValue(user)} ·{" "}
-                      {selectedMetric.valueLabel}
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      {renderMetricIcon("coin")} {Number(user.coins_balance ?? 0)} | {renderMetricIcon("medal")}{" "}
-                      {Number(user.win_rate ?? 0)}%
+                    <div style={{ fontWeight: 800, color: "var(--text)" }}>
+                      {renderMetricIcon(selectedMetric.iconType)} {metricValue(user)}
                     </div>
                   </div>
                 </div>
@@ -1184,14 +1144,6 @@ export default function App() {
           "Не удалось скопировать ссылку. Скопируйте её вручную.",
         );
       }
-    };
-
-    const handleShareReferralLink = async () => {
-      if (!referralLink) {
-        notifications.info("Реферальная ссылка пока недоступна.");
-        return;
-      }
-      await shareInviteLink(referralLink);
     };
 
     const achievementsBlock = (
@@ -1295,11 +1247,6 @@ export default function App() {
             <div style={{ fontWeight: 800, fontSize: "16px" }}>
               {displayName}
             </div>
-            {profile?.updated_at ? (
-              <div style={{ fontSize: "12px", color: "var(--muted)" }}>
-                Обновлено: {formatDate(profile.updated_at)}
-              </div>
-            ) : null}
           </div>
         </div>
         <div
@@ -1313,8 +1260,6 @@ export default function App() {
             { label: "Игры", value: stats.gamesPlayed },
             { label: "Победы", value: stats.wins },
             { label: "Поражения", value: stats.losses },
-            { label: "Ничьи", value: stats.draws },
-            { label: "Винрейт", value: `${stats.winRate ?? 0}%` },
           ].map((item) => (
             <div
               key={item.label}
@@ -1364,13 +1309,6 @@ export default function App() {
                 onClick={handleCopyReferralLink}
               >
                 Copy
-              </button>
-              <button
-                type="button"
-                className="btn primary"
-                onClick={handleShareReferralLink}
-              >
-                Share
               </button>
             </div>
           </div>
@@ -1473,7 +1411,7 @@ export default function App() {
       },
       secondary: { show: false },
     });
-  }, [hideModal, me, notifications, setModal, shareInviteLink]);
+  }, [hideModal, me, notifications, setModal]);
 
   const sendHello = useCallback(() => {
     const currentMe = meRef.current;
