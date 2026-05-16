@@ -142,6 +142,17 @@ const games = new Map();
 
 const toWs = (uid) => wsByUid.get(uid);
 
+const getActiveUserProfile = (uid) => {
+  const ws = toWs(uid);
+  const user = ws ? userByWs.get(ws) : null;
+  if (!user) return null;
+  return {
+    name: user.name || "",
+    username: user.username || "",
+    avatar_url: user.avatar || "",
+  };
+};
+
 const buildOnlineStats = () => {
   const total = wss.clients.size;
   let verified = 0;
@@ -161,7 +172,7 @@ const broadcastOnlineStats = () => {
   wss.clients.forEach((ws) => send(ws, { t: "online.stats", ...stats }));
 };
 
-const gameState = createGameState({ recordMatchOutcome, toWs, games });
+const gameState = createGameState({ recordMatchOutcome, toWs, games, getActiveUserProfile });
 const matchmaking = createMatchmaking({ toWs, userByWs, games, endMatch: gameState.endMatch });
 
 const handlers = createWsHandlers({

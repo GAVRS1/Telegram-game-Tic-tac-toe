@@ -9,6 +9,7 @@ import { buildReferralPayload } from "./common/startPayload.js";
 
 let pool = null;
 const DEFAULT_BOT_USERNAME = "TTToeONL_bot";
+const PLACEHOLDER_USERNAMES = new Set(["player", "игрок"]);
 
 function buildReferralLink(refCode) {
   if (!refCode) return "";
@@ -54,6 +55,22 @@ function parseSsl(v) {
       return { rejectUnauthorized: false };
   }
   return false;
+}
+
+function cleanUserNameForDb(value) {
+  if (typeof value !== "string") return null;
+  const cleaned = value.trim().replace(/^@/, "").replace(/[<>]/g, "").slice(0, 100);
+  if (!cleaned) return null;
+  const normalized = cleaned.toLowerCase();
+  if (PLACEHOLDER_USERNAMES.has(normalized)) return null;
+  if (/^u_[a-z0-9]+$/i.test(cleaned)) return null;
+  return cleaned;
+}
+
+function cleanAvatarUrlForDb(value) {
+  if (typeof value !== "string") return null;
+  const cleaned = value.trim().slice(0, 500);
+  return cleaned || null;
 }
 
 export async function ensureSchema() {
@@ -286,25 +303,35 @@ export async function upsertUser({
   if (!isNumericId(id)) return;
 
   const n = Number(id);
+  const dbUsername = cleanUserNameForDb(username);
+  const dbAvatarUrl = cleanAvatarUrlForDb(avatar_url);
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const refCode = await generateUniqueReferralCode(p);
     try {
       await p.query(
         `
         INSERT INTO users (id, username, avatar_url, ref_code, registration_source, registration_payload, registration_at)
-        VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $5 IS NULL THEN NULL ELSE NOW() END)
+        VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $5::text IS NULL THEN NULL ELSE NOW() END)
         ON CONFLICT (id) DO UPDATE
-          SET username = EXCLUDED.username,
-              avatar_url = EXCLUDED.avatar_url,
+          SET username = CASE
+                WHEN EXCLUDED.username IS NULL THEN users.username
+                WHEN users.username IS NULL
+                  OR BTRIM(users.username) = ''
+                  OR LOWER(BTRIM(users.username)) IN ('player', 'игрок')
+                  OR users.username ~ '^u_[a-z0-9]+$'
+                  THEN EXCLUDED.username
+                ELSE EXCLUDED.username
+              END,
+              avatar_url = COALESCE(EXCLUDED.avatar_url, users.avatar_url),
               registration_source = COALESCE(users.registration_source, $5),
               registration_payload = COALESCE(users.registration_payload, $6),
-              registration_at = COALESCE(users.registration_at, CASE WHEN $5 IS NULL THEN NULL ELSE NOW() END),
+              registration_at = COALESCE(users.registration_at, CASE WHEN $5::text IS NULL THEN NULL ELSE NOW() END),
               updated_at = NOW();
       `,
         [
           n,
-          username || null,
-          avatar_url || null,
+          dbUsername,
+          dbAvatarUrl,
           refCode,
           registrationSource,
           registrationPayload,
@@ -376,12 +403,38 @@ export async function recordMatchOutcome({
   winnerId = null,
   loserId = null,
   drawIds = [],
+  profilesById = {},
 }) {
+  const ensureResultProfile = async (id) => {
+    if (!isNumericId(id)) return;
+    const profile = profilesById[String(id)] || profilesById[Number(id)];
+    if (!profile) return;
+
+    const profileUsername =
+      cleanUserNameForDb(profile.username) ||
+      cleanUserNameForDb(profile.name);
+    const profileAvatar = cleanAvatarUrlForDb(profile.avatar_url || profile.avatar);
+    if (!profileUsername && !profileAvatar) return;
+
+    await upsertUser({
+      id,
+      username: profileUsername,
+      avatar_url: profileAvatar,
+    });
+  };
+
   const unlockedByUser = {};
-  if (winnerId) unlockedByUser[String(winnerId)] = await recordPlayerResult(winnerId, "win");
-  if (loserId) unlockedByUser[String(loserId)] = await recordPlayerResult(loserId, "loss");
+  if (winnerId) {
+    await ensureResultProfile(winnerId);
+    unlockedByUser[String(winnerId)] = await recordPlayerResult(winnerId, "win");
+  }
+  if (loserId) {
+    await ensureResultProfile(loserId);
+    unlockedByUser[String(loserId)] = await recordPlayerResult(loserId, "loss");
+  }
   const uniqueDraws = Array.from(new Set(drawIds)).filter(isNumericId);
   for (const id of uniqueDraws) {
+    await ensureResultProfile(id);
     unlockedByUser[String(id)] = await recordPlayerResult(id, "draw");
   }
   return unlockedByUser;

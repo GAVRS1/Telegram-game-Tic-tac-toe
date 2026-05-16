@@ -26,7 +26,12 @@ export const checkWin = (board) => {
   return null;
 };
 
-export const createGameState = ({ recordMatchOutcome, toWs, games }) => {
+export const createGameState = ({
+  recordMatchOutcome,
+  toWs,
+  games,
+  getActiveUserProfile = () => null,
+}) => {
   const buildMeta = (g) => ({
     roundNumber: g.roundNumber,
     roundWinsX: g.roundWinsX,
@@ -78,7 +83,14 @@ export const createGameState = ({ recordMatchOutcome, toWs, games }) => {
       if (winBy === "X" || winBy === "O") {
         const winnerUid = winBy === "X" ? g.X : g.O;
         const loserUid = winBy === "X" ? g.O : g.X;
-        unlockedByUser = await recordMatchOutcome({ winnerId: winnerUid, loserId: loserUid });
+        unlockedByUser = await recordMatchOutcome({
+          winnerId: winnerUid,
+          loserId: loserUid,
+          profilesById: {
+            [winnerUid]: getActiveUserProfile(winnerUid),
+            [loserUid]: getActiveUserProfile(loserUid),
+          },
+        });
         const eventKey = `match:${gameId}:winner:${winnerUid}`;
         try {
           const awardResult = await awardCoins({
@@ -114,7 +126,13 @@ export const createGameState = ({ recordMatchOutcome, toWs, games }) => {
           });
         }
       } else if (reason === "draw") {
-        unlockedByUser = await recordMatchOutcome({ drawIds: [g.X, g.O] });
+        unlockedByUser = await recordMatchOutcome({
+          drawIds: [g.X, g.O],
+          profilesById: {
+            [g.X]: getActiveUserProfile(g.X),
+            [g.O]: getActiveUserProfile(g.O),
+          },
+        });
       }
 
       for (const [userId, achievementIds] of Object.entries(unlockedByUser || {})) {
