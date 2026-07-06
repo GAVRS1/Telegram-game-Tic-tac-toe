@@ -1,8 +1,7 @@
-echo ".env
-node_modules
+.env
 .env.*
+node_modules
 *.log
 dist
 *.sqlite
 *.db
-" > .gitignore
