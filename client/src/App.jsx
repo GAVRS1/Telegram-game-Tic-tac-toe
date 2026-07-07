@@ -1,11 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Board } from "./components/Board.jsx";
 import { GameModesCarousel } from "./components/GameModesCarousel.jsx";
 import { Nav } from "./components/Nav.jsx";
 import { Modal } from "./components/Modal.jsx";
 import { Notifications } from "./components/Notifications.jsx";
 import { useTelegramAuth } from "./hooks/useTelegramAuth.js";
-import { useWebSocket } from "./hooks/useWebSocket.js";
+import { useGameTransport } from "./hooks/useGameTransport.js";
 import { useNotifications } from "./hooks/useNotifications.js";
 import { audioManager } from "./services/audioManager.js";
 import { StatsSystem } from "./services/statsSystem.js";
@@ -14,7 +14,7 @@ import {
   normalizeId,
   sanitizeUsername,
 } from "./utils/identity.js";
-import { apiUrl, resolveWsCandidates, resolveWsUrl } from "./utils/network.js";
+import { apiUrl } from "./utils/network.js";
 import { parseStartPayload } from "./utils/startPayload.js";
 
 const WIN_PHRASES = [
@@ -421,9 +421,6 @@ export default function App() {
       } catch {}
     };
   }, [telegram]);
-
-  const wsUrls = useMemo(() => resolveWsCandidates(), []);
-  const wsUrl = wsUrls[0] || resolveWsUrl();
 
   const sendWs = useCallback((payload) => sendRef.current(payload), []);
 
@@ -1599,18 +1596,6 @@ export default function App() {
         return;
       }
 
-      if (msg.t === "online.stats") {
-        const total = Number(msg.total ?? 0);
-        const verified = Number(msg.verified ?? 0);
-        const guest = Number(msg.guest ?? 0);
-        setOnlineStats({
-          total: Number.isFinite(total) ? total : 0,
-          verified: Number.isFinite(verified) ? verified : 0,
-          guest: Number.isFinite(guest) ? guest : 0,
-        });
-        return;
-      }
-
       if (msg.t === "queue.joined") {
         setScreen("modes");
         setNavMode("waiting");
@@ -1872,9 +1857,7 @@ export default function App() {
     ],
   );
 
-  const { send: sendWsRaw } = useWebSocket({
-    url: wsUrl,
-    urls: wsUrls,
+  const { send: sendWsRaw } = useGameTransport({
     onOpen,
     onMessage,
     onClose,

@@ -27,11 +27,16 @@ function buildReferralLink(refCode) {
 export function getPool() {
   if (pool) return pool;
 
-  const hasUrl = !!process.env.DATABASE_URL;
+  // Netlify DB (Neon) кладёт строку подключения в NETLIFY_DATABASE_URL; ей нужен SSL.
+  const netlifyUrl = process.env.NETLIFY_DATABASE_URL || "";
+  const connectionString = process.env.DATABASE_URL || netlifyUrl;
+  const hasUrl = !!connectionString;
   const cfg = hasUrl
     ? {
-        connectionString: process.env.DATABASE_URL,
-        ssl: parseSsl(process.env.PGSSL),
+        connectionString,
+        ssl:
+          parseSsl(process.env.PGSSL) ||
+          (connectionString === netlifyUrl ? { rejectUnauthorized: false } : false),
       }
     : {
         host: process.env.PGHOST,
